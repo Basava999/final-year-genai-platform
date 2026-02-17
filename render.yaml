@@ -4,11 +4,6 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
-<<<<<<< HEAD
-    repo: https://github.com/your-username/insightrural # User will update this
-=======
-    repo: https://github.com/Basava999/final-year-genai-platform
->>>>>>> f597feb (Prepare for deployment: Added render.yaml, updated state.js, configured .gitignore)
     rootDir: college/backend
     envVars:
       - key: PYTHON_VERSION
