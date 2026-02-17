@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: insightrural-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    repo: https://github.com/your-username/insightrural # User will update this
+    rootDir: college/backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: GROQ_API_KEY
+        sync: false # User will input this in dashboard

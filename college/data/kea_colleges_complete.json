@@ -1,0 +1,795 @@
+[
+  {
+    "college_id": "E001",
+    "name": "University Visvesvaraya College of Engineering (UVCE)",
+    "type": "Government",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "Bangalore University",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "UVCE",
+    "annual_fee": {
+      "gm": 49600,
+      "obc": 28990,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 850, "OBC": 420, "SC": 4500, "ST": 2800},
+      "ECE": {"GM": 1800, "OBC": 950, "SC": 8500, "ST": 5200},
+      "EEE": {"GM": 4500, "OBC": 2100, "SC": 15000, "ST": 9000},
+      "ME": {"GM": 12000, "OBC": 6500, "SC": 28000, "ST": 18000},
+      "CIVIL": {"GM": 18000, "OBC": 9500, "SC": 35000, "ST": 22000}
+    },
+    "website": "https://uvce.ac.in",
+    "highlights": ["Oldest engineering college in Karnataka", "Excellent placements", "Low fees"]
+  },
+  {
+    "college_id": "E002",
+    "name": "Government SJCE Mysore",
+    "type": "Government",
+    "location": "Mysore",
+    "district": "Mysore",
+    "affiliation": "JSS Science and Technology University",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Government colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 1200, "OBC": 600, "SC": 5500, "ST": 3200},
+      "ECE": {"GM": 2500, "OBC": 1300, "SC": 10000, "ST": 6000},
+      "ISE": {"GM": 1800, "OBC": 900, "SC": 7500, "ST": 4500},
+      "EEE": {"GM": 5500, "OBC": 2800, "SC": 18000, "ST": 11000},
+      "ME": {"GM": 15000, "OBC": 8000, "SC": 32000, "ST": 20000},
+      "CIVIL": {"GM": 22000, "OBC": 12000, "SC": 40000, "ST": 25000}
+    },
+    "website": "https://sjce.ac.in"
+  },
+  {
+    "college_id": "E003",
+    "name": "R.V. College of Engineering (RVCE)",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A++",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI", "DS", "CY"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 593, "OBC": 315, "SC": 7102, "ST": 3308},
+      "ECE": {"GM": 1303, "OBC": 680, "SC": 9500, "ST": 5800},
+      "ISE": {"GM": 820, "OBC": 430, "SC": 7800, "ST": 4200},
+      "AI": {"GM": 750, "OBC": 390, "SC": 7500, "ST": 4000},
+      "DS": {"GM": 680, "OBC": 360, "SC": 7200, "ST": 3800},
+      "CY": {"GM": 1100, "OBC": 580, "SC": 9000, "ST": 5200},
+      "EEE": {"GM": 4200, "OBC": 2200, "SC": 17000, "ST": 10500},
+      "ME": {"GM": 7801, "OBC": 4100, "SC": 25000, "ST": 15000},
+      "CIVIL": {"GM": 22445, "OBC": 11800, "SC": 42000, "ST": 26000}
+    },
+    "website": "https://rvce.edu.in",
+    "highlights": ["Top private engineering college", "Excellent placements", "NBA accredited"]
+  },
+  {
+    "college_id": "E004",
+    "name": "B.M.S. College of Engineering (BMSCE)",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A++",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI", "DS"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 2156, "OBC": 925, "SC": 10068, "ST": 4795},
+      "ECE": {"GM": 3979, "OBC": 2050, "SC": 15000, "ST": 9000},
+      "ISE": {"GM": 2800, "OBC": 1450, "SC": 12000, "ST": 7000},
+      "AI": {"GM": 2400, "OBC": 1250, "SC": 11000, "ST": 6500},
+      "DS": {"GM": 2200, "OBC": 1150, "SC": 10500, "ST": 6000},
+      "EEE": {"GM": 8500, "OBC": 4400, "SC": 28000, "ST": 17000},
+      "ME": {"GM": 21621, "OBC": 11200, "SC": 42000, "ST": 26000},
+      "CIVIL": {"GM": 37116, "OBC": 19200, "SC": 55000, "ST": 35000}
+    },
+    "website": "https://bmsce.ac.in",
+    "highlights": ["Established 1946", "Strong alumni network", "Industry collaborations"]
+  },
+  {
+    "college_id": "E005",
+    "name": "PES University",
+    "type": "Deemed_Private",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "Deemed University",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "AI", "DS", "BT"],
+    "fee_category": "Deemed / Private Universities",
+    "annual_fee": {
+      "gm": 350000,
+      "obc": 280000,
+      "sc_st": 180000
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 2154, "OBC": 763, "SC": 13626, "ST": 10879},
+      "ECE": {"GM": 3072, "OBC": 1600, "SC": 16000, "ST": 10000},
+      "AI": {"GM": 2500, "OBC": 1300, "SC": 14000, "ST": 9500},
+      "DS": {"GM": 2300, "OBC": 1200, "SC": 13800, "ST": 9200},
+      "EEE": {"GM": 8500, "OBC": 4500, "SC": 28000, "ST": 18000},
+      "ME": {"GM": 20398, "OBC": 10500, "SC": 40000, "ST": 25000},
+      "CIVIL": {"GM": 8336, "OBC": 4300, "SC": 30000, "ST": 19000}
+    },
+    "website": "https://pes.edu",
+    "highlights": ["Deemed university", "Research focused", "Good placements"]
+  },
+  {
+    "college_id": "E006",
+    "name": "M.S. Ramaiah Institute of Technology (MSRIT)",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A++",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI", "DS", "AERO", "BT"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 1850, "OBC": 920, "SC": 9500, "ST": 5500},
+      "ECE": {"GM": 3500, "OBC": 1800, "SC": 14000, "ST": 8500},
+      "ISE": {"GM": 2400, "OBC": 1200, "SC": 11000, "ST": 6500},
+      "AI": {"GM": 2100, "OBC": 1050, "SC": 10000, "ST": 6000},
+      "DS": {"GM": 1950, "OBC": 980, "SC": 9800, "ST": 5800},
+      "EEE": {"GM": 7500, "OBC": 3900, "SC": 25000, "ST": 15500},
+      "ME": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 24000},
+      "CIVIL": {"GM": 32000, "OBC": 16500, "SC": 50000, "ST": 32000},
+      "AERO": {"GM": 12000, "OBC": 6200, "SC": 32000, "ST": 20000}
+    },
+    "website": "https://msrit.edu",
+    "highlights": ["Ramaiah Group flagship", "Strong placements", "Good infrastructure"]
+  },
+  {
+    "college_id": "E007",
+    "name": "Siddaganga Institute of Technology (SIT)",
+    "type": "Type1_Unaided",
+    "location": "Tumkur",
+    "district": "Tumkur",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI", "CH"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 3200, "OBC": 1650, "SC": 12500, "ST": 7500},
+      "ECE": {"GM": 6500, "OBC": 3350, "SC": 22000, "ST": 13500},
+      "ISE": {"GM": 4200, "OBC": 2150, "SC": 16000, "ST": 9800},
+      "AI": {"GM": 3800, "OBC": 1950, "SC": 14500, "ST": 8800},
+      "EEE": {"GM": 12000, "OBC": 6200, "SC": 32000, "ST": 20000},
+      "ME": {"GM": 25000, "OBC": 13000, "SC": 45000, "ST": 28000},
+      "CIVIL": {"GM": 35000, "OBC": 18000, "SC": 52000, "ST": 33000}
+    },
+    "website": "https://sit.ac.in",
+    "highlights": ["Run by Sri Siddaganga Mutt", "Affordable hostel", "Good academics"]
+  },
+  {
+    "college_id": "E008",
+    "name": "Dayananda Sagar College of Engineering (DSCE)",
+    "type": "Type2_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI", "DS", "CYBER"],
+    "fee_category": "Type-2 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 121610,
+      "obc": 98020,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 4500, "OBC": 2350, "SC": 17000, "ST": 10500},
+      "ECE": {"GM": 8500, "OBC": 4400, "SC": 28000, "ST": 17000},
+      "ISE": {"GM": 5800, "OBC": 3000, "SC": 20000, "ST": 12500},
+      "AI": {"GM": 5200, "OBC": 2700, "SC": 18500, "ST": 11500},
+      "DS": {"GM": 4800, "OBC": 2500, "SC": 17500, "ST": 11000},
+      "CYBER": {"GM": 5500, "OBC": 2850, "SC": 19500, "ST": 12000},
+      "EEE": {"GM": 15000, "OBC": 7800, "SC": 35000, "ST": 22000},
+      "ME": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000},
+      "CIVIL": {"GM": 40000, "OBC": 20500, "SC": 58000, "ST": 36000}
+    },
+    "website": "https://dayanandasagar.edu"
+  },
+  {
+    "college_id": "E009",
+    "name": "National Institute of Engineering (NIE), Mysore",
+    "type": "Type1_Unaided",
+    "location": "Mysore",
+    "district": "Mysore",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A++",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 2800, "OBC": 1450, "SC": 11500, "ST": 7000},
+      "ECE": {"GM": 5500, "OBC": 2850, "SC": 19000, "ST": 11800},
+      "ISE": {"GM": 3600, "OBC": 1850, "SC": 14000, "ST": 8500},
+      "EEE": {"GM": 9500, "OBC": 4900, "SC": 30000, "ST": 18500},
+      "ME": {"GM": 20000, "OBC": 10500, "SC": 40000, "ST": 25000},
+      "CIVIL": {"GM": 30000, "OBC": 15500, "SC": 48000, "ST": 30000}
+    },
+    "website": "https://nie.ac.in",
+    "highlights": ["One of the oldest private engg colleges", "Strong industry connect"]
+  },
+  {
+    "college_id": "E010",
+    "name": "Bangalore Institute of Technology (BIT)",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI", "DS"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 3800, "OBC": 1950, "SC": 14500, "ST": 8800},
+      "ECE": {"GM": 7500, "OBC": 3900, "SC": 25000, "ST": 15500},
+      "ISE": {"GM": 4800, "OBC": 2500, "SC": 17500, "ST": 11000},
+      "AI": {"GM": 4200, "OBC": 2150, "SC": 16000, "ST": 9800},
+      "DS": {"GM": 4000, "OBC": 2050, "SC": 15500, "ST": 9500},
+      "EEE": {"GM": 12000, "OBC": 6200, "SC": 32000, "ST": 20000},
+      "ME": {"GM": 22000, "OBC": 11500, "SC": 42000, "ST": 26500},
+      "CIVIL": {"GM": 35000, "OBC": 18000, "SC": 52000, "ST": 33000}
+    },
+    "website": "https://bit-bangalore.edu.in"
+  },
+  {
+    "college_id": "E011",
+    "name": "Dr. Ambedkar Institute of Technology (AIT)",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 4200, "OBC": 2150, "SC": 16000, "ST": 9800},
+      "ECE": {"GM": 8000, "OBC": 4150, "SC": 26500, "ST": 16500},
+      "ISE": {"GM": 5200, "OBC": 2700, "SC": 18500, "ST": 11500},
+      "EEE": {"GM": 13000, "OBC": 6700, "SC": 34000, "ST": 21000},
+      "ME": {"GM": 24000, "OBC": 12500, "SC": 44000, "ST": 27500},
+      "CIVIL": {"GM": 36000, "OBC": 18500, "SC": 53000, "ST": 33500}
+    },
+    "website": "https://drait.edu"
+  },
+  {
+    "college_id": "E012",
+    "name": "SDM College of Engineering and Technology",
+    "type": "Type1_Unaided",
+    "location": "Dharwad",
+    "district": "Dharwad",
+    "affiliation": "VTU (Autonomous)",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 5500, "OBC": 2850, "SC": 19000, "ST": 11800},
+      "ECE": {"GM": 10000, "OBC": 5200, "SC": 32000, "ST": 19800},
+      "ISE": {"GM": 6800, "OBC": 3500, "SC": 22000, "ST": 13800},
+      "EEE": {"GM": 15500, "OBC": 8000, "SC": 36000, "ST": 22500},
+      "ME": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000},
+      "CIVIL": {"GM": 38000, "OBC": 19500, "SC": 55000, "ST": 34500}
+    },
+    "website": "https://sdmcet.ac.in",
+    "highlights": ["Sri Dharmasthala Manjunatheshwara Trust", "Good for North Karnataka students"]
+  },
+  {
+    "college_id": "E013",
+    "name": "K.L.E. Technological University (KLETU)",
+    "type": "Type2_Unaided",
+    "location": "Hubli",
+    "district": "Dharwad",
+    "affiliation": "Autonomous University",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "AI"],
+    "fee_category": "Type-2 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 165000,
+      "obc": 140000,
+      "sc_st": 85000
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 4000, "OBC": 2050, "SC": 15500, "ST": 9500},
+      "ECE": {"GM": 7800, "OBC": 4050, "SC": 26000, "ST": 16000},
+      "AI": {"GM": 4500, "OBC": 2350, "SC": 17000, "ST": 10500},
+      "EEE": {"GM": 13500, "OBC": 7000, "SC": 35000, "ST": 21800},
+      "ME": {"GM": 26000, "OBC": 13500, "SC": 46000, "ST": 28800},
+      "CIVIL": {"GM": 37000, "OBC": 19000, "SC": 54000, "ST": 34000}
+    },
+    "website": "https://kletech.ac.in",
+    "highlights": ["State Private University", "Good research facilities"]
+  },
+  {
+    "college_id": "E014",
+    "name": "Gogte Institute of Technology (GIT)",
+    "type": "Type1_Unaided",
+    "location": "Belgaum",
+    "district": "Belgaum",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 6500, "OBC": 3350, "SC": 22000, "ST": 13500},
+      "ECE": {"GM": 12000, "OBC": 6200, "SC": 32000, "ST": 20000},
+      "EEE": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 23800},
+      "ME": {"GM": 30000, "OBC": 15500, "SC": 50000, "ST": 31500},
+      "CIVIL": {"GM": 40000, "OBC": 20500, "SC": 58000, "ST": 36500}
+    },
+    "website": "https://git.edu"
+  },
+  {
+    "college_id": "E015",
+    "name": "RNS Institute of Technology (RNSIT)",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 5000, "OBC": 2600, "SC": 18000, "ST": 11200},
+      "ECE": {"GM": 9500, "OBC": 4900, "SC": 30000, "ST": 18500},
+      "ISE": {"GM": 6200, "OBC": 3200, "SC": 21000, "ST": 13000},
+      "AI": {"GM": 5600, "OBC": 2900, "SC": 19500, "ST": 12000},
+      "EEE": {"GM": 14500, "OBC": 7500, "SC": 35500, "ST": 22000},
+      "ME": {"GM": 26000, "OBC": 13500, "SC": 46000, "ST": 28800},
+      "CIVIL": {"GM": 38000, "OBC": 19500, "SC": 55000, "ST": 34500}
+    },
+    "website": "https://rnsit.ac.in"
+  },
+  {
+    "college_id": "E016",
+    "name": "JSS Science and Technology University",
+    "type": "Deemed_Private",
+    "location": "Mysore",
+    "district": "Mysore",
+    "affiliation": "Deemed University",
+    "naac_grade": "A++",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI"],
+    "fee_category": "Deemed / Private Universities",
+    "annual_fee": {
+      "gm": 220000,
+      "obc": 180000,
+      "sc_st": 100000
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 2200, "OBC": 1150, "SC": 10500, "ST": 6300},
+      "ECE": {"GM": 4200, "OBC": 2150, "SC": 16000, "ST": 9800},
+      "ISE": {"GM": 2900, "OBC": 1500, "SC": 12000, "ST": 7200},
+      "AI": {"GM": 2500, "OBC": 1300, "SC": 11000, "ST": 6600},
+      "EEE": {"GM": 8000, "OBC": 4150, "SC": 26500, "ST": 16500},
+      "ME": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 23800},
+      "CIVIL": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000}
+    },
+    "website": "https://jssstuniv.in"
+  },
+  {
+    "college_id": "E017",
+    "name": "Malnad College of Engineering",
+    "type": "Government_Aided",
+    "location": "Hassan",
+    "district": "Hassan",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "For Aided courses In Aided colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 4800, "OBC": 2500, "SC": 17500, "ST": 10800},
+      "ECE": {"GM": 9200, "OBC": 4750, "SC": 29500, "ST": 18200},
+      "EEE": {"GM": 14000, "OBC": 7250, "SC": 34500, "ST": 21500},
+      "ME": {"GM": 24000, "OBC": 12500, "SC": 44000, "ST": 27500},
+      "CIVIL": {"GM": 34000, "OBC": 17500, "SC": 51000, "ST": 32000}
+    },
+    "website": "https://mcehassan.ac.in",
+    "highlights": ["Government aided", "Low fees", "Good for rural students"]
+  },
+  {
+    "college_id": "E018",
+    "name": "P.E.S. College of Engineering",
+    "type": "Government_Aided",
+    "location": "Mandya",
+    "district": "Mandya",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "For Aided courses In Aided colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 5500, "OBC": 2850, "SC": 19000, "ST": 11800},
+      "ECE": {"GM": 10500, "OBC": 5450, "SC": 33000, "ST": 20500},
+      "EEE": {"GM": 15500, "OBC": 8000, "SC": 36000, "ST": 22500},
+      "ME": {"GM": 26000, "OBC": 13500, "SC": 46000, "ST": 28800},
+      "CIVIL": {"GM": 36000, "OBC": 18500, "SC": 53000, "ST": 33200}
+    },
+    "website": "https://pesce.ac.in"
+  },
+  {
+    "college_id": "E019",
+    "name": "The Oxford College of Engineering",
+    "type": "Type2_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Type-2 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 121610,
+      "obc": 98020,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 8000, "OBC": 4150, "SC": 26500, "ST": 16500},
+      "ECE": {"GM": 15000, "OBC": 7750, "SC": 35500, "ST": 22000},
+      "ISE": {"GM": 10000, "OBC": 5200, "SC": 31000, "ST": 19500},
+      "EEE": {"GM": 20000, "OBC": 10500, "SC": 40000, "ST": 25000},
+      "ME": {"GM": 32000, "OBC": 16500, "SC": 50000, "ST": 31500},
+      "CIVIL": {"GM": 42000, "OBC": 21500, "SC": 60000, "ST": 37500}
+    },
+    "website": "https://oxfordcollege.edu.in"
+  },
+  {
+    "college_id": "E020",
+    "name": "CMR Institute of Technology",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 7500, "OBC": 3900, "SC": 25000, "ST": 15500},
+      "ECE": {"GM": 13500, "OBC": 7000, "SC": 34000, "ST": 21200},
+      "ISE": {"GM": 9200, "OBC": 4750, "SC": 29500, "ST": 18200},
+      "AI": {"GM": 8200, "OBC": 4250, "SC": 27000, "ST": 16800},
+      "EEE": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 23800},
+      "ME": {"GM": 30000, "OBC": 15500, "SC": 50000, "ST": 31200},
+      "CIVIL": {"GM": 40000, "OBC": 20500, "SC": 58000, "ST": 36200}
+    },
+    "website": "https://cmrit.ac.in"
+  },
+  {
+    "college_id": "E021",
+    "name": "Basaveshwara Engineering College",
+    "type": "Type1_Unaided",
+    "location": "Bagalkot",
+    "district": "Bagalkot",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 9000, "OBC": 4650, "SC": 28500, "ST": 17800},
+      "ECE": {"GM": 16000, "OBC": 8300, "SC": 37000, "ST": 23000},
+      "EEE": {"GM": 22000, "OBC": 11500, "SC": 42000, "ST": 26200},
+      "ME": {"GM": 34000, "OBC": 17500, "SC": 51000, "ST": 32000},
+      "CIVIL": {"GM": 44000, "OBC": 22500, "SC": 62000, "ST": 38800}
+    },
+    "website": "https://bec.ac.in"
+  },
+  {
+    "college_id": "E022",
+    "name": "Government Engineering College, Hassan",
+    "type": "Government",
+    "location": "Hassan",
+    "district": "Hassan",
+    "affiliation": "VTU",
+    "naac_grade": "B+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "Government colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 12000, "OBC": 6200, "SC": 32000, "ST": 20000},
+      "ECE": {"GM": 20000, "OBC": 10500, "SC": 40000, "ST": 25000},
+      "EEE": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000},
+      "ME": {"GM": 40000, "OBC": 20500, "SC": 58000, "ST": 36200},
+      "CIVIL": {"GM": 48000, "OBC": 24500, "SC": 65000, "ST": 40500}
+    },
+    "highlights": ["Government college", "Very low fees", "Ideal for rural students"]
+  },
+  {
+    "college_id": "E023",
+    "name": "Government Engineering College, Raichur",
+    "type": "Government",
+    "location": "Raichur",
+    "district": "Raichur",
+    "affiliation": "VTU",
+    "naac_grade": "B",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "Government colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 23800},
+      "ECE": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000},
+      "EEE": {"GM": 36000, "OBC": 18500, "SC": 53000, "ST": 33200},
+      "ME": {"GM": 48000, "OBC": 24500, "SC": 65000, "ST": 40500},
+      "CIVIL": {"GM": 55000, "OBC": 28000, "SC": 70000, "ST": 43800}
+    }
+  },
+  {
+    "college_id": "E024",
+    "name": "Government Engineering College, Kushalnagar",
+    "type": "Government",
+    "location": "Kushalnagar",
+    "district": "Kodagu",
+    "affiliation": "VTU",
+    "naac_grade": "B",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "ME", "CIVIL"],
+    "fee_category": "Government colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 22000, "OBC": 11500, "SC": 42000, "ST": 26200},
+      "ECE": {"GM": 32000, "OBC": 16500, "SC": 50000, "ST": 31200},
+      "ME": {"GM": 52000, "OBC": 26500, "SC": 68000, "ST": 42500},
+      "CIVIL": {"GM": 60000, "OBC": 30500, "SC": 75000, "ST": 46800}
+    }
+  },
+  {
+    "college_id": "E025",
+    "name": "Government Engineering College, Chamarajanagar",
+    "type": "Government",
+    "location": "Chamarajanagar",
+    "district": "Chamarajanagar",
+    "affiliation": "VTU",
+    "naac_grade": "B",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "Government colleges",
+    "annual_fee": {
+      "gm": 44200,
+      "obc": 23590,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 20000, "OBC": 10500, "SC": 40000, "ST": 25000},
+      "ECE": {"GM": 30000, "OBC": 15500, "SC": 50000, "ST": 31200},
+      "EEE": {"GM": 38000, "OBC": 19500, "SC": 55000, "ST": 34500},
+      "ME": {"GM": 50000, "OBC": 25500, "SC": 66000, "ST": 41200},
+      "CIVIL": {"GM": 58000, "OBC": 29500, "SC": 72000, "ST": 45000}
+    }
+  },
+  {
+    "college_id": "E026",
+    "name": "Nitte Meenakshi Institute of Technology",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU",
+    "naac_grade": "A+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE", "AI"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 6000, "OBC": 3100, "SC": 20500, "ST": 12800},
+      "ECE": {"GM": 11000, "OBC": 5700, "SC": 33500, "ST": 20800},
+      "ISE": {"GM": 7500, "OBC": 3900, "SC": 25000, "ST": 15500},
+      "AI": {"GM": 6800, "OBC": 3500, "SC": 22500, "ST": 14000},
+      "EEE": {"GM": 16000, "OBC": 8300, "SC": 37000, "ST": 23000},
+      "ME": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000},
+      "CIVIL": {"GM": 38000, "OBC": 19500, "SC": 55000, "ST": 34500}
+    },
+    "website": "https://nmit.ac.in"
+  },
+  {
+    "college_id": "E027",
+    "name": "Sapthagiri College of Engineering",
+    "type": "Type2_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU",
+    "naac_grade": "B+",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL"],
+    "fee_category": "Type-2 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 121610,
+      "obc": 98020,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 12000, "OBC": 6200, "SC": 32000, "ST": 20000},
+      "ECE": {"GM": 20000, "OBC": 10500, "SC": 40000, "ST": 25000},
+      "EEE": {"GM": 28000, "OBC": 14500, "SC": 48000, "ST": 30000},
+      "ME": {"GM": 40000, "OBC": 20500, "SC": 58000, "ST": 36200},
+      "CIVIL": {"GM": 50000, "OBC": 25500, "SC": 66000, "ST": 41200}
+    }
+  },
+  {
+    "college_id": "E028",
+    "name": "East West Institute of Technology",
+    "type": "Type2_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Type-2 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 121610,
+      "obc": 98020,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 10000, "OBC": 5200, "SC": 31000, "ST": 19500},
+      "ECE": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 23800},
+      "ISE": {"GM": 12500, "OBC": 6500, "SC": 33500, "ST": 21000},
+      "EEE": {"GM": 25000, "OBC": 13000, "SC": 45000, "ST": 28000},
+      "ME": {"GM": 36000, "OBC": 18500, "SC": 53000, "ST": 33200},
+      "CIVIL": {"GM": 46000, "OBC": 23500, "SC": 63000, "ST": 39500}
+    }
+  },
+  {
+    "college_id": "E029",
+    "name": "Presidency University",
+    "type": "Deemed_Private",
+    "location": "Bangalore",
+    "district": "Bangalore Urban",
+    "affiliation": "Private University",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "ME", "CIVIL", "AI", "DS"],
+    "fee_category": "Deemed / Private Universities",
+    "annual_fee": {
+      "gm": 180000,
+      "obc": 150000,
+      "sc_st": 90000
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 15000, "OBC": 7750, "SC": 35500, "ST": 22000},
+      "ECE": {"GM": 25000, "OBC": 13000, "SC": 45000, "ST": 28000},
+      "AI": {"GM": 18000, "OBC": 9500, "SC": 38000, "ST": 23800},
+      "DS": {"GM": 16000, "OBC": 8300, "SC": 37000, "ST": 23000},
+      "ME": {"GM": 40000, "OBC": 20500, "SC": 58000, "ST": 36200},
+      "CIVIL": {"GM": 48000, "OBC": 24500, "SC": 65000, "ST": 40500}
+    },
+    "website": "https://presidencyuniversity.in"
+  },
+  {
+    "college_id": "E030",
+    "name": "M.V.J. College of Engineering",
+    "type": "Type1_Unaided",
+    "location": "Bangalore",
+    "district": "Bangalore Rural",
+    "affiliation": "VTU",
+    "naac_grade": "A",
+    "hostel_available": true,
+    "branches": ["CSE", "ECE", "EEE", "ME", "CIVIL", "ISE"],
+    "fee_category": "Type-1 - Un-aided colleges",
+    "annual_fee": {
+      "gm": 112410,
+      "obc": 88820,
+      "sc_st": 0
+    },
+    "cutoff_2024": {
+      "CSE": {"GM": 7000, "OBC": 3600, "SC": 23500, "ST": 14500},
+      "ECE": {"GM": 13000, "OBC": 6700, "SC": 34000, "ST": 21200},
+      "ISE": {"GM": 8500, "OBC": 4400, "SC": 27500, "ST": 17000},
+      "EEE": {"GM": 17000, "OBC": 8800, "SC": 38000, "ST": 23800},
+      "ME": {"GM": 29000, "OBC": 15000, "SC": 49000, "ST": 30500},
+      "CIVIL": {"GM": 39000, "OBC": 20000, "SC": 56000, "ST": 35000}
+    },
+    "website": "https://mvjce.edu.in"
+  }
+]
