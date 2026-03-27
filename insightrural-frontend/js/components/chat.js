@@ -1,530 +1,631 @@
-// Chat Component - AI-Powered Version
-// Connects to Flask backend for real AI responses
-// API_BASE_URL is defined in state.js (loaded first)
+// chat.js — ChatGPT-Style AI Chat Component for InsightRural
+// Premium streaming, rich markdown, message actions, stop button, smart scroll
 
 const ChatComponent = {
     isStreaming: false,
-    currentStreamController: null,
+    abortController: null,
+    lastUserMessage: '',
+    lastAIBubble: null,
 
     init() {
-        this.chatInput = document.getElementById('chat-input');
-        this.sendBtn = document.getElementById('send-btn');
-        this.messagesContainer = document.getElementById('messages-container');
+        this.chatInput  = document.getElementById('chat-input');
+        this.sendBtn    = document.getElementById('send-btn');
+        this.stopBtn    = document.getElementById('chat-stop-btn');
+        this.msgContainer = document.getElementById('messages-container');
 
         this.setupEventListeners();
         this.setupAutoResize();
-        this.loadChatHistory();
+
+        const history = AppState.getChatHistory();
+        if (history && history.length > 0) {
+            this.loadChatHistory();
+        } else {
+            this.renderWelcome();
+        }
+
         this.checkAIStatus();
-        this.showSuggestedQuestions();
     },
 
-    showSuggestedQuestions() {
-        // Only show if no chat history
-        const history = AppState.getChatHistory();
-        if (history && history.length > 0) return;
+    // ─── Welcome Hero ─────────────────────────────────────────────────────────
+    renderWelcome() {
+        const hero = document.createElement('div');
+        hero.className = 'ir-welcome';
+        hero.id = 'ir-welcome';
 
-        const suggestions = [
-            '🏛️ Which college can I get with rank 5000 in CSE?',
-            '💰 What scholarships are available for SC students?',
-            '📊 Compare RVCE vs MSRIT for Computer Science',
-            '🏠 What are the hostel options near BMSCE?',
-            '🏦 How to apply for education loans?',
-            '📝 What is the KEA counseling process?'
+        const chips = [
+            { emoji: '🏛️', text: 'Which college can I get with rank 5000 in CSE?' },
+            { emoji: '💰', text: 'What scholarships are available for SC students?' },
+            { emoji: '📊', text: 'Compare RVCE vs MSRIT for Computer Science' },
+            { emoji: '🏠', text: 'What are hostel options near BMSCE?' },
+            { emoji: '🏦', text: 'How do I apply for an education loan?' },
+            { emoji: '📋', text: 'Explain the KEA KCET counseling process' }
         ];
 
-        const container = document.createElement('div');
-        container.className = 'suggested-questions';
-        container.id = 'suggested-questions';
+        hero.innerHTML = `
+            <div class="ir-welcome-logo">IR</div>
+            <h2 class="ir-welcome-heading">How can I help you today?</h2>
+            <p class="ir-welcome-sub">I'm InsightRural AI — your personal guide for KCET counseling, colleges, scholarships & more.</p>
+            <div class="ir-chips-wrapper">
+                <p class="ir-chips-label">✨ Try asking me:</p>
+                <div class="ir-chips">
+                    ${chips.map(c => `
+                        <button class="ir-chip" data-query="${c.text}">
+                            <span class="ir-chip-emoji">${c.emoji}</span>
+                            <span>${c.text}</span>
+                        </button>`).join('')}
+                </div>
+            </div>`;
 
-        suggestions.forEach(q => {
-            const chip = document.createElement('button');
-            chip.className = 'suggested-q';
-            chip.textContent = q;
-            chip.addEventListener('click', () => {
-                this.chatInput.value = q;
+        hero.querySelectorAll('.ir-chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.chatInput.value = btn.dataset.query;
                 this.sendBtn.disabled = false;
+                hero.remove();
                 this.sendMessage();
-                const suggestionsEl = document.getElementById('suggested-questions');
-                if (suggestionsEl) suggestionsEl.remove();
             });
-            container.appendChild(chip);
         });
 
-        this.messagesContainer.appendChild(container);
+        this.msgContainer.appendChild(hero);
     },
 
+    // ─── AI Status Bar ───────────────────────────────────────────────────────
     async checkAIStatus() {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/ai/status`);
-            const status = await response.json();
-            console.log('AI Status:', status);
-
-            // Add AI status bar
-            this.showAIStatusBar(status);
-
-            if (!status.ai_modules_available) {
-                this.addSystemMessage('⚠️ AI modules not fully loaded. Some features may be limited.');
-            }
-        } catch (error) {
-            console.log('Backend not available, using offline mode');
-            this.showAIStatusBar({ ai_modules_available: false, ollama_connected: false, rag_indexed: false });
+            const res  = await fetch(`${API_BASE_URL}/api/ai/status`);
+            const data = await res.json();
+            this.renderStatusBar(data);
+        } catch {
+            this.renderStatusBar({ ai_modules_available: false });
         }
     },
 
-    showAIStatusBar(status) {
-        const existing = document.getElementById('ai-status-bar');
-        if (existing) existing.remove();
-
-        const bar = document.createElement('div');
-        bar.className = 'ai-status-bar';
-        bar.id = 'ai-status-bar';
-
-        const isOnline = status.ai_modules_available && status.ollama_connected;
+    renderStatusBar(status) {
+        document.getElementById('ai-status-bar')?.remove();
+        const bar    = document.createElement('div');
+        bar.id       = 'ai-status-bar';
+        bar.className = 'ir-status-bar';
+        const online = status.ai_modules_available;
         bar.innerHTML = `
-            <span class="ai-status-dot ${isOnline ? '' : 'offline'}"></span>
-            ${isOnline ? '🧠 Llama 3.3 70B Connected' : '⚠️ Offline Mode'}
-            ${status.rag_indexed ? ' • 📚 RAG Active' : ''}
-            <span style="margin-left: auto; opacity: 0.6">InsightRural AI</span>
-        `;
-
-        // Insert before messages container
-        this.messagesContainer.parentNode.insertBefore(bar, this.messagesContainer);
+            <span class="ir-status-dot ${online ? 'online' : 'offline'}"></span>
+            <span>${online ? '🧠 InsightRural AI · Ollama LLaMA 3' : '⚠️ Offline Mode'}</span>
+            ${status.rag_indexed ? '<span class="ir-status-tag">📚 RAG Active</span>' : ''}
+            <span class="ir-status-right">InsightRural v2.5</span>`;
+        this.msgContainer.parentNode.insertBefore(bar, this.msgContainer);
     },
 
+    // ─── Event Listeners ─────────────────────────────────────────────────────
     setupEventListeners() {
-        // Send message on button click
-        this.sendBtn.addEventListener('click', () => {
-            this.sendMessage();
+        this.sendBtn.addEventListener('click', () => this.sendMessage());
+
+        if (this.stopBtn) {
+            this.stopBtn.addEventListener('click', () => this.stopStreaming());
+        }
+
+        this.chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
         });
 
-        // Enter to send (Shift+Enter for new line)
-        this.chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
-
-        // Enable/disable send button
         this.chatInput.addEventListener('input', () => {
-            const hasText = this.chatInput.value.trim().length > 0;
-            this.sendBtn.disabled = !hasText || this.isStreaming;
+            this.sendBtn.disabled = !this.chatInput.value.trim() || this.isStreaming;
             this.autoResize();
         });
 
-        // Focus input when clicking on chat area
-        this.messagesContainer.addEventListener('click', () => {
-            this.chatInput.focus();
-        });
+        // Send button icon (arrow-up)
+        this.sendBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 19V5M5 12l7-7 7 7"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
 
-        // Initialize button state
-        this.sendBtn.disabled = true;
+        // Stop button icon (square)
+        if (this.stopBtn) {
+            this.stopBtn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                </svg>`;
+        }
     },
 
-    setupAutoResize() {
-        this.autoResize();
-    },
-
+    setupAutoResize() { this.autoResize(); },
     autoResize() {
         this.chatInput.style.height = 'auto';
-        const newHeight = Math.min(this.chatInput.scrollHeight, 150);
-        this.chatInput.style.height = newHeight + 'px';
+        this.chatInput.style.height = Math.min(this.chatInput.scrollHeight, 200) + 'px';
     },
 
+    // ─── Stop Streaming ───────────────────────────────────────────────────────
+    stopStreaming() {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+        this.hideStopButton();
+        this.isStreaming = false;
+        this.sendBtn.disabled = !this.chatInput.value.trim();
+    },
+
+    showStopButton() {
+        if (!this.stopBtn) return;
+        this.sendBtn.style.display  = 'none';
+        this.stopBtn.style.display  = 'flex';
+    },
+
+    hideStopButton() {
+        if (!this.stopBtn) return;
+        this.stopBtn.style.display  = 'none';
+        this.sendBtn.style.display  = 'flex';
+    },
+
+    // ─── Send Message ─────────────────────────────────────────────────────────
     async sendMessage() {
-        const message = this.chatInput.value.trim();
-        if (!message || this.isStreaming) return;
+        const msg = this.chatInput.value.trim();
+        if (!msg || this.isStreaming) return;
 
-        // Add user message
-        this.addMessage('user', message);
-        AppState.addMessage('user', message);
+        document.getElementById('ir-welcome')?.remove();
 
-        // Clear input
+        this.lastUserMessage = msg;
+        this.appendBubble('user', msg);
+        AppState.addMessage('user', msg);
+
         this.chatInput.value = '';
         this.sendBtn.disabled = true;
         this.autoResize();
 
-        // Show typing indicator
-        this.showTypingIndicator();
         this.isStreaming = true;
+        this.showStopButton();
+        this.showThinkingBubble();
 
-        // Get AI response
-        await this.getAIResponse(message);
+        await this.fetchAIResponse(msg);
     },
 
-    addMessage(type, content) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}-message`;
+    // ─── AI Response ──────────────────────────────────────────────────────────
+    async fetchAIResponse(userMsg) {
+        const profile     = AppState.getProfile() || {};
+        const chatHistory = (AppState.getChatHistory() || []).slice(-8).map(m => ({
+            role:    m.sender === 'ai' ? 'assistant' : 'user',
+            content: m.content
+        }));
 
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'avatar';
-        avatarDiv.textContent = type === 'user' ? 'Y' : 'IR';
+        this.abortController = new AbortController();
 
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'message-content';
-
-        const textDiv = document.createElement('div');
-        textDiv.className = 'message-text';
-        textDiv.innerHTML = this.formatMessage(content);
-
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'message-time';
-        timeDiv.textContent = this.getCurrentTime();
-
-        contentDiv.appendChild(textDiv);
-        contentDiv.appendChild(timeDiv);
-
-        messageDiv.appendChild(avatarDiv);
-        messageDiv.appendChild(contentDiv);
-
-        this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
-
-        return textDiv; // Return for streaming updates
-    },
-
-    addSystemMessage(content) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message system-message';
-        messageDiv.style.cssText = 'text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 0.5rem;';
-        messageDiv.innerHTML = content;
-        this.messagesContainer.appendChild(messageDiv);
-    },
-
-    showTypingIndicator() {
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'message ai-message typing-indicator';
-        typingDiv.id = 'typing-indicator';
-
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'avatar';
-        avatarDiv.textContent = 'IR';
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'message-content';
-
-        const textDiv = document.createElement('div');
-        textDiv.className = 'message-text typing-text';
-        textDiv.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-
-        contentDiv.appendChild(textDiv);
-        typingDiv.appendChild(avatarDiv);
-        typingDiv.appendChild(contentDiv);
-
-        this.messagesContainer.appendChild(typingDiv);
-        this.scrollToBottom();
-    },
-
-    removeTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
-    },
-
-    formatMessage(text) {
-        if (!text) return '';
-
-        let formatted = text;
-
-        // Convert code blocks (``` ... ```)
-        formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre style="background: var(--bg-primary); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; border: 1px solid var(--border-color);">$1</pre>');
-
-        // Convert inline code
-        formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: var(--bg-primary); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em;">$1</code>');
-
-        // Convert **bold** to <strong>
-        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // Convert *italic* to <em>
-        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-        // Convert ## headers
-        formatted = formatted.replace(/^## (.*?)$/gm, '<h4 style="margin: 1rem 0 0.5rem; color: var(--primary); font-size: 1.1rem;">$1</h4>');
-        formatted = formatted.replace(/^### (.*?)$/gm, '<h5 style="margin: 0.8rem 0 0.4rem; font-size: 1rem;">$1</h5>');
-
-        // Convert blockquotes
-        formatted = formatted.replace(/^> (.*?)$/gm, '<div style="border-left: 3px solid var(--primary); padding: 0.5rem 1rem; margin: 0.5rem 0; background: var(--bg-primary); border-radius: 0 6px 6px 0; font-style: italic;">$1</div>');
-
-        // Convert bullet points
-        formatted = formatted.replace(/^- (.*?)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.3rem;">$1</li>');
-        formatted = formatted.replace(/^• (.*?)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.3rem;">$1</li>');
-
-        // Convert numbered lists
-        formatted = formatted.replace(/^\d+\. (.*?)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.3rem;">$1</li>');
-
-        // Convert markdown links [text](url)
-        formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--primary); text-decoration: underline;">$1</a>');
-
-        // Convert line breaks
-        formatted = formatted.replace(/\n/g, '<br>');
-
-        // Convert ₹ formatting for fees
-        formatted = formatted.replace(/₹([\d,]+)/g, '<span style="color: var(--success); font-weight: 600;">₹$1</span>');
-
-        // Highlight ranks
-        formatted = formatted.replace(/Rank:?\s*(\d+)/gi, 'Rank: <strong style="color: var(--primary);">$1</strong>');
-        formatted = formatted.replace(/Cutoff:?\s*(\d+)/gi, 'Cutoff: <strong style="color: var(--warning);">$1</strong>');
-
-        // Highlight portals
-        formatted = formatted.replace(/(ssp\.postmatric\.karnataka\.gov\.in)/gi, '<a href="https://$1" target="_blank" style="color: var(--primary);">$1</a>');
-        formatted = formatted.replace(/(cetonline\.karnataka\.gov\.in)/gi, '<a href="https://$1" target="_blank" style="color: var(--primary);">$1</a>');
-
-        return formatted;
-    },
-
-    getCurrentTime() {
-        const now = new Date();
-        return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    },
-
-    async getAIResponse(userMessage) {
         try {
-            // Get student profile
-            const profile = AppState.getProfile() || {};
-
-            // Try streaming first
-            const useStreaming = true; // Streaming enabled for ChatGPT-like experience
-
-            if (useStreaming) {
-                await this.getStreamingResponse(userMessage, profile);
-            } else {
-                await this.getNonStreamingResponse(userMessage, profile);
-            }
-
-        } catch (error) {
-            console.error('Error getting AI response:', error);
-            this.removeTypingIndicator();
-            this.isStreaming = false;
-
-            // Fallback to mock response
-            const response = this.getFallbackResponse(userMessage);
-            this.addMessage('ai', response);
-            AppState.addMessage('ai', response);
-        }
-    },
-
-    async getNonStreamingResponse(userMessage, profile) {
-        try {
-            // Build conversation history for LLM memory
-            const chatHistory = (AppState.getChatHistory() || []).slice(-6).map(m => ({
-                role: m.sender === 'ai' ? 'assistant' : 'user',
-                content: m.content
-            }));
-
-            const response = await fetch(`${API_BASE_URL}/api/chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: userMessage,
-                    profile: profile,
-                    session_id: AppState.getSessionId(),
-                    history: chatHistory
-                })
+            const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ message: userMsg, profile, history: chatHistory }),
+                signal:  this.abortController.signal
             });
 
-            const data = await response.json();
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.readStream(res);
 
-            this.removeTypingIndicator();
-            this.isStreaming = false;
-
-            if (data.error) {
-                this.addMessage('ai', data.response || 'Sorry, an error occurred.');
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                // User stopped — finalise current bubble
+                this.removeThinkingBubble();
+                if (this.lastAIBubble) {
+                    const textEl = this.lastAIBubble.querySelector('.ir-bubble.ir-ai-bubble.ir-prose');
+                    if (textEl) {
+                        const cur = textEl.querySelector('.ir-cursor');
+                        if (cur) cur.remove();
+                        this.attachMessageActions(this.lastAIBubble);
+                    }
+                }
             } else {
-                this.addMessage('ai', data.response);
-                AppState.addMessage('ai', data.response);
+                // Fallback to non-streaming
+                console.warn('Stream failed, trying non-streaming…', err);
+                try {
+                    this.abortController = new AbortController();
+                    const res2 = await fetch(`${API_BASE_URL}/api/chat`, {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body:    JSON.stringify({ message: userMsg, profile, history: chatHistory, session_id: AppState.getSessionId() }),
+                        signal:  this.abortController.signal
+                    });
+                    const data  = await res2.json();
+                    this.removeThinkingBubble();
+                    const text  = data.response || data.error || 'Sorry, something went wrong.';
+                    const bubble = this.appendBubble('ai', text);
+                    AppState.addMessage('ai', text);
+                } catch (err2) {
+                    if (err2.name === 'AbortError') return;
+                    this.removeThinkingBubble();
+                    const fallback = this.buildFallback(userMsg);
+                    this.appendBubble('ai', fallback);
+                    AppState.addMessage('ai', fallback);
+                }
             }
-
-        } catch (error) {
-            throw error;
+        } finally {
+            this.isStreaming     = false;
+            this.abortController = null;
+            this.hideStopButton();
+            this.sendBtn.disabled = !this.chatInput.value.trim();
         }
     },
 
-    async getStreamingResponse(userMessage, profile) {
+    async readStream(response) {
+        this.removeThinkingBubble();
+
+        const { bubble, textEl, timeEl, modelEl } = this.createAIBubble();
+        this.lastAIBubble = bubble;
+        this.msgContainer.appendChild(bubble);
+        this.scrollToBottom();
+
+        const reader  = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText  = '';
+        let buffer    = '';
+        let finished  = false;
+
         try {
-            this.removeTypingIndicator();
-
-            // Create placeholder message for streaming
-            const textDiv = this.addMessage('ai', '');
-            let fullResponse = '';
-
-            // Build conversation history for LLM memory
-            const chatHistory = (AppState.getChatHistory() || []).slice(-6).map(m => ({
-                role: m.sender === 'ai' ? 'assistant' : 'user',
-                content: m.content
-            }));
-
-            const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: userMessage,
-                    profile: profile,
-                    history: chatHistory
-                })
-            });
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // keep incomplete line
 
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            if (data.chunk) {
-                                fullResponse += data.chunk;
-                                textDiv.innerHTML = this.formatMessage(fullResponse);
-                                this.scrollToBottom();
-                            }
-                            if (data.done) {
-                                AppState.addMessage('ai', fullResponse);
-                            }
-                        } catch (e) {
-                            // Ignore parse errors
+                    if (!line.startsWith('data: ')) continue;
+                    try {
+                        const data = JSON.parse(line.slice(6));
+
+                        if (data.model && modelEl) {
+                            modelEl.textContent = '🧠 ' + data.model;
+                            modelEl.style.display = 'inline-flex';
                         }
-                    }
+                        if (data.chunk) {
+                            fullText += data.chunk;
+                            textEl.innerHTML = this.renderMarkdown(fullText) + '<span class="ir-cursor"></span>';
+                            this.smartScroll();
+                        }
+                        if (data.done) {
+                            finished = true;
+                            textEl.innerHTML = this.renderMarkdown(fullText);
+                            timeEl.textContent = this.getTime();
+                            if (data.model && modelEl) modelEl.textContent = '✨ ' + data.model;
+                            this.attachCopyButtons(bubble);
+                            this.attachMessageActions(bubble);
+                            AppState.addMessage('ai', fullText);
+                        }
+                    } catch { /* ignore parse errors */ }
                 }
             }
+        } catch (err) {
+            if (err.name === 'AbortError') throw err; // re-throw for caller
+        }
 
-            this.isStreaming = false;
-
-        } catch (error) {
-            throw error;
+        // Finalise if stream ended without explicit done event
+        if (!finished && fullText) {
+            textEl.innerHTML = this.renderMarkdown(fullText);
+            timeEl.textContent = this.getTime();
+            this.attachCopyButtons(bubble);
+            this.attachMessageActions(bubble);
+            AppState.addMessage('ai', fullText);
         }
     },
 
-    getFallbackResponse(userMessage) {
-        const feature = AppState.currentFeature;
-        const query = userMessage.toLowerCase();
-
-        // Check for greeting
-        if (query.match(/^(hi|hello|hey|namaste)/i)) {
-            return `Hello! 👋 I'm InsightRural AI, your educational counselor for Karnataka KEA students.
-
-I can help you with:
-🏛️ **College Recommendations** - Based on your KCET rank
-💰 **Scholarships** - SC/ST/OBC/EWS schemes
-🏦 **Education Loans** - From nationalized banks
-🏠 **Hostels** - College and private options
-
-To give you personalized guidance, please share:
-1. Your KCET rank
-2. Preferred branch (CSE, ECE, etc.)
-3. Your category (GM/OBC/SC/ST)
-4. Family income (for scholarship eligibility)
-
-How can I help you today?`;
+    // ─── Bubble Builders ──────────────────────────────────────────────────────
+    appendBubble(role, content) {
+        if (role === 'user') {
+            const bubble = document.createElement('div');
+            bubble.className = 'ir-message ir-user';
+            bubble.innerHTML = `
+                <div class="ir-avatar ir-user-avatar">You</div>
+                <div class="ir-bubble-wrap">
+                    <div class="ir-bubble ir-user-bubble">${this.escapeHtml(content)}</div>
+                    <div class="ir-time">${this.getTime()}</div>
+                </div>`;
+            this.msgContainer.appendChild(bubble);
+            this.scrollToBottom();
+            return bubble;
         }
 
-        if (feature === 'colleges' || query.includes('college') || query.includes('rank')) {
-            return `For personalized college recommendations, I need to know your KCET rank.
-
-**Quick Reference for CSE (2024 Cutoffs):**
-🏛️ **RVCE**: GM ~593, OBC ~315
-🏛️ **PES University**: GM ~2154, OBC ~763
-🏛️ **BMSCE**: GM ~2156, OBC ~925
-🏛️ **MSRIT**: GM ~1850, OBC ~920
-🏛️ **SIT Tumkur**: GM ~3200, OBC ~1650
-
-**Government Colleges (Lower fees):**
-🏛️ **UVCE**: GM ~850, OBC ~420
-🏛️ **SJCE Mysore**: GM ~1200, OBC ~600
-
-Please share your KCET rank and preferred branch for specific recommendations.`;
-        }
-
-        if (feature === 'scholarships' || query.includes('scholarship')) {
-            return `**Karnataka Post-Matric Scholarships:**
-
-**For SC Students** (Income < ₹2.5 Lakhs):
-✅ Full fee reimbursement
-✅ Maintenance: ₹1200/month (hosteller)
-📅 Deadline: January 15, 2026
-
-**For ST Students** (Income < ₹2.5 Lakhs):
-✅ Full fee reimbursement
-✅ Free government hostels available
-📅 Deadline: February 15, 2026
-
-**For OBC Category-1** (Income < ₹2.5 Lakhs):
-✅ Fee reimbursement
-✅ ₹20,000 educational allowance
-
-**Apply at:** ssp.postmatric.karnataka.gov.in
-
-What's your category and family income? I can tell you exactly which scholarships you're eligible for.`;
-        }
-
-        if (feature === 'loans' || query.includes('loan') || query.includes('fee')) {
-            return `**Education Loan Options:**
-
-**SBI Student Loan:**
-💰 Up to ₹15 Lakhs (India)
-📊 Interest: 8.5% (8.0% for girls)
-🔓 No collateral up to ₹7.5 Lakhs
-
-**Central Interest Subsidy (CISS):**
-If your family income is < ₹4.5 Lakhs:
-✅ **Zero interest** during course + 1 year
-✅ Apply through any nationalized bank
-
-**Steps to Apply:**
-1. Get admission letter
-2. Visit any SBI/Canara/BoB branch
-3. Submit documents
-4. Loan sanctioned in 7-15 days
-
-Would you like details on specific bank schemes or the documents required?`;
-        }
-
-        if (feature === 'hostels' || query.includes('hostel')) {
-            return `**Hostel Options:**
-
-**College Hostels:**
-🏠 RVCE: ₹45,000/year + ₹4,500/month mess
-🏠 BMSCE: ₹40,000/year + ₹4,000/month mess
-🏠 SIT Tumkur: ₹15,000/year (Mutt managed - very affordable!)
-
-**Government Free Hostels (SC/ST):**
-🆓 Apply through Social Welfare Department
-🆓 Available in most district headquarters
-
-**Private PGs in Bangalore:**
-💰 Shared room: ₹6,000-12,000/month
-💰 Single room: ₹10,000-18,000/month
-
-Which college are you planning to join? I can give specific hostel information.`;
-        }
-
-        return `I'm here to help with your educational journey! You can ask me about:
-
-🏛️ **Colleges** - "Which college can I get with rank 5000?"
-💰 **Scholarships** - "What scholarships are available for SC students?"
-🏦 **Loans** - "How to get an education loan?"
-🏠 **Hostels** - "What are the hostel options near BMSCE?"
-
-What would you like to know?`;
+        const { bubble, textEl, timeEl } = this.createAIBubble();
+        textEl.innerHTML = this.renderMarkdown(content);
+        timeEl.textContent = this.getTime();
+        this.msgContainer.appendChild(bubble);
+        this.attachCopyButtons(bubble);
+        this.attachMessageActions(bubble);
+        this.scrollToBottom();
+        return bubble;
     },
 
-    loadChatHistory() {
-        const history = AppState.getChatHistory();
-        history.forEach(msg => {
-            this.addMessage(msg.sender, msg.content);
+    createAIBubble() {
+        const bubble  = document.createElement('div');
+        bubble.className = 'ir-message ir-ai';
+
+        const modelEl = document.createElement('div');
+        modelEl.className = 'ir-model-badge';
+        modelEl.style.display = 'none';
+
+        const textEl  = document.createElement('div');
+        textEl.className = 'ir-bubble ir-ai-bubble ir-prose';
+
+        const timeEl  = document.createElement('div');
+        timeEl.className = 'ir-time';
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'ir-msg-actions';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'ir-bubble-wrap';
+        wrap.appendChild(modelEl);
+        wrap.appendChild(textEl);
+        wrap.appendChild(actionsEl);
+        wrap.appendChild(timeEl);
+
+        bubble.innerHTML = `<div class="ir-avatar ir-ai-avatar">IR</div>`;
+        bubble.appendChild(wrap);
+
+        return { bubble, textEl, timeEl, modelEl, actionsEl };
+    },
+
+    // ─── Message Actions Row ──────────────────────────────────────────────────
+    attachMessageActions(bubble) {
+        const actionsEl = bubble.querySelector('.ir-msg-actions');
+        if (!actionsEl || actionsEl.hasChildNodes()) return;
+
+        // Copy response
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'ir-action-btn';
+        copyBtn.title = 'Copy response';
+        copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+        </svg> Copy`;
+
+        copyBtn.addEventListener('click', async () => {
+            const textEl = bubble.querySelector('.ir-bubble.ir-prose');
+            if (!textEl) return;
+            try {
+                await navigator.clipboard.writeText(textEl.innerText);
+                copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg> Copied!`;
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                    </svg> Copy`;
+                    copyBtn.classList.remove('copied');
+                }, 2200);
+            } catch { copyBtn.textContent = 'Error'; }
+        });
+
+        // Thumbs up
+        const thumbBtn = document.createElement('button');
+        thumbBtn.className = 'ir-action-btn';
+        thumbBtn.title = 'Good response';
+        thumbBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+        thumbBtn.addEventListener('click', () => {
+            thumbBtn.style.color = '#10a37f';
+        });
+
+        // Regenerate
+        const regenBtn = document.createElement('button');
+        regenBtn.className = 'ir-action-btn';
+        regenBtn.title = 'Regenerate response';
+        regenBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M1 4v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.51 15a9 9 0 102.13-9.36L1 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg> Regenerate`;
+        regenBtn.addEventListener('click', () => this.regenerate(bubble));
+
+        actionsEl.appendChild(copyBtn);
+        actionsEl.appendChild(thumbBtn);
+        actionsEl.appendChild(regenBtn);
+    },
+
+    // ─── Regenerate ──────────────────────────────────────────────────────────
+    async regenerate(oldBubble) {
+        if (this.isStreaming || !this.lastUserMessage) return;
+
+        // Remove old AI bubble from DOM
+        oldBubble?.remove();
+
+        this.isStreaming = true;
+        this.showStopButton();
+        this.showThinkingBubble();
+
+        await this.fetchAIResponse(this.lastUserMessage);
+    },
+
+    // ─── Thinking Indicator ──────────────────────────────────────────────────
+    showThinkingBubble() {
+        const el = document.createElement('div');
+        el.id = 'ir-thinking';
+        el.className = 'ir-message ir-ai';
+        el.innerHTML = `
+            <div class="ir-avatar ir-ai-avatar">IR</div>
+            <div class="ir-bubble-wrap">
+                <div class="ir-bubble ir-ai-bubble">
+                    <div class="ir-dots"><span></span><span></span><span></span></div>
+                </div>
+            </div>`;
+        this.msgContainer.appendChild(el);
+        this.scrollToBottom();
+    },
+    removeThinkingBubble() {
+        document.getElementById('ir-thinking')?.remove();
+    },
+
+    // ─── Markdown Renderer ───────────────────────────────────────────────────
+    renderMarkdown(text) {
+        if (!text) return '';
+        let t = text;
+
+        // Fenced code blocks
+        t = t.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+            const escaped = this.escapeHtml(code.trim());
+            return `<div class="ir-code-block">
+                <div class="ir-code-header">
+                    <span class="ir-code-lang">${lang || 'code'}</span>
+                    <button class="ir-copy-code" data-code="${encodeURIComponent(code.trim())}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                        </svg> Copy
+                    </button>
+                </div>
+                <pre><code>${escaped}</code></pre>
+            </div>`;
+        });
+
+        // Inline code
+        t = t.replace(/`([^`]+)`/g, '<code class="ir-inline-code">$1</code>');
+
+        // Bold & italic
+        t = t.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        t = t.replace(/\*((?!\s).*?(?<!\s))\*/g, '<em>$1</em>');
+
+        // Headers
+        t = t.replace(/^### (.+)$/gm, '<h5 class="ir-h5">$1</h5>');
+        t = t.replace(/^## (.+)$/gm,  '<h4 class="ir-h4">$1</h4>');
+        t = t.replace(/^# (.+)$/gm,   '<h3 class="ir-h3">$1</h3>');
+
+        // Horizontal rule
+        t = t.replace(/^---+$/gm, '<hr class="ir-hr">');
+
+        // Blockquote
+        t = t.replace(/^> (.+)$/gm, '<blockquote class="ir-bq">$1</blockquote>');
+
+        // Markdown tables
+        t = t.replace(/((?:^\|.+\|\s*\n)+)/gm, match => {
+            const lines = match.trim().split('\n').filter(l => l.trim());
+            if (lines.length < 2) return match;
+            if (!/^\|[\s:|\\-]+\|$/.test(lines[1].trim())) return match;
+
+            const parseRow = line => line.split('|').slice(1, -1).map(c => c.trim());
+            const headers  = parseRow(lines[0]);
+            const dataRows = lines.slice(2).map(parseRow);
+
+            const thHtml = headers.map(h => `<th>${h}</th>`).join('');
+            const trHtml = dataRows.map(row =>
+                `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`
+            ).join('');
+
+            return `<div class="ir-table-wrap"><table class="ir-table">
+                <thead><tr>${thHtml}</tr></thead>
+                <tbody>${trHtml}</tbody>
+            </table></div>`;
+        });
+
+        // Unordered lists
+        t = t.replace(/(^[-•*] .+$(\n[-•*] .+$)*)/gm, match => {
+            const items = match.split('\n').map(l => `<li>${l.replace(/^[-•*] /, '')}</li>`).join('');
+            return `<ul class="ir-ul">${items}</ul>`;
+        });
+
+        // Ordered lists
+        t = t.replace(/(^\d+\. .+$(\n\d+\. .+$)*)/gm, match => {
+            const items = match.split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
+            return `<ol class="ir-ol">${items}</ol>`;
+        });
+
+        // Markdown links
+        t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener" class="ir-link">$1</a>');
+
+        // Auto-links for known portals
+        t = t.replace(/(ssp\.postmatric\.karnataka\.gov\.in)/gi,
+            '<a href="https://$1" target="_blank" class="ir-link">$1</a>');
+        t = t.replace(/(cetonline\.karnataka\.gov\.in)/gi,
+            '<a href="https://$1" target="_blank" class="ir-link">$1</a>');
+        t = t.replace(/(vidyalakshmi\.co\.in)/gi,
+            '<a href="https://www.$1" target="_blank" class="ir-link">$1</a>');
+
+        // Special highlights
+        t = t.replace(/₹([\d,]+)/g, '<span class="ir-rupee">₹$1</span>');
+        t = t.replace(/\bRank:?\s*(\d[\d,]*)/gi, 'Rank: <strong class="ir-rank">$1</strong>');
+        t = t.replace(/\bCutoff:?\s*(\d[\d,]*)/gi, 'Cutoff: <strong class="ir-cutoff">$1</strong>');
+
+        // Paragraphs
+        t = t.split(/\n{2,}/).map(para => {
+            para = para.trim();
+            if (!para) return '';
+            if (/^<(h[1-6]|ul|ol|blockquote|pre|hr|div)/.test(para)) return para;
+            return `<p>${para.replace(/\n/g, '<br>')}</p>`;
+        }).join('\n');
+
+        return t;
+    },
+
+    // ─── Copy-code Buttons ───────────────────────────────────────────────────
+    attachCopyButtons(bubble) {
+        bubble.querySelectorAll('.ir-copy-code').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(decodeURIComponent(btn.dataset.code));
+                    btn.textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                        </svg> Copy`;
+                    }, 2000);
+                } catch { btn.textContent = 'Error'; }
+            });
         });
     },
 
+    // ─── Smart Auto-scroll ────────────────────────────────────────────────────
+    smartScroll() {
+        const el   = this.msgContainer;
+        const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (dist < 150) {
+            el.scrollTop = el.scrollHeight;
+        }
+    },
+
     scrollToBottom() {
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        this.msgContainer.scrollTop = this.msgContainer.scrollHeight;
+    },
+
+    // ─── Fallback Responses ───────────────────────────────────────────────────
+    buildFallback(query) {
+        const q = query.toLowerCase();
+        if (/^(hi|hello|hey|namaste)/i.test(q))
+            return `Hello! 👋 I'm **InsightRural AI**, your KCET counselor for Karnataka.\n\nShare your **rank, branch, and category** and I'll give you personalized college recommendations, scholarship info, and more!`;
+        if (/college|rank|cutoff|kcet/.test(q))
+            return `**Quick Reference — CSE Cutoffs 2024:**\n\n| College | GM | OBC | Approx. Fee |\n|---|---|---|---|\n| RVCE | ~593 | ~315 | ₹1.4L/yr |\n| PES | ~2154 | ~763 | ₹2.2L/yr |\n| BMSCE | ~2156 | ~925 | ₹1.6L/yr |\n| MSRIT | ~1850 | ~920 | ₹1.8L/yr |\n| SIT Tumkur | ~3200 | ~1650 | ₹90K/yr |\n\nShare your **KCET rank and category** for personalized results.`;
+        if (/scholarship/.test(q))
+            return `**Karnataka Post-Matric Scholarships:**\n\n- **SC/ST** (Income < ₹2.5L): Full fee reimbursement + ₹1200/month\n- **OBC Cat-1** (Income < ₹2.5L): Fee reimbursement + ₹20K allowance\n- **EWS/General** (Income < ₹8L): Partial fee support\n\n📎 Apply at: **ssp.postmatric.karnataka.gov.in**`;
+        if (/loan/.test(q))
+            return `**Education Loan Options:**\n\n- **SBI Student Loan**: Up to ₹15L @ 8.5% (8% for girls)\n- **CISS Subsidy**: Zero interest if income < ₹4.5L during study\n- **No collateral** up to ₹7.5L\n\nApply via: **vidyalakshmi.co.in**`;
+        if (/hostel/.test(q))
+            return `**Hostel Options:**\n\n- **RVCE**: ₹45,000/yr + mess\n- **BMSCE**: ₹40,000/yr + mess\n- **SC/ST Free Hostels**: Apply through Social Welfare Dept.\n- **PG in Bangalore**: ₹6,000–₹15,000/month`;
+        return `I'm here to help! Ask me about:\n\n- 🏛️ **College Recommendations** (share your rank)\n- 💰 **Scholarships** (share your category)\n- 🏦 **Education Loans**\n- 🏠 **Hostels & Accommodation**\n- 📋 **KEA Counseling Process**`;
+    },
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    },
+    getTime() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    },
+    loadChatHistory() {
+        AppState.getChatHistory().forEach(m => this.appendBubble(m.sender, m.content));
+        // Track last user message for regenerate
+        const history = AppState.getChatHistory();
+        const lastUser = [...history].reverse().find(m => m.sender === 'user');
+        if (lastUser) this.lastUserMessage = lastUser.content;
+    },
+
+    // Backward compatibility
+    addMessage(role, content) {
+        return this.appendBubble(role, content);
     }
 };
+
+window.ChatComponent = ChatComponent;

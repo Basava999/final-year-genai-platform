@@ -9,7 +9,7 @@
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    display: none;
+    display: none !important;
     justify-content: center;
     align-items: center;
     z-index: 2000;
@@ -18,7 +18,7 @@
 }
 
 .modal.active {
-    display: flex;
+    display: flex !important;
 }
 
 @keyframes modalOverlayIn {

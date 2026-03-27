@@ -4,7 +4,7 @@ const SidebarComponent = {
         this.sidebar = document.getElementById('sidebar');
         this.sidebarToggle = document.getElementById('sidebar-toggle');
         this.themeToggle = document.getElementById('theme-toggle');
-        this.loginSidebarBtn = document.getElementById('login-sidebar-btn');
+
         this.profileBtn = document.getElementById('profile-btn');
 
         this.isOpen = false;
@@ -24,11 +24,7 @@ const SidebarComponent = {
             AppState.toggleTheme();
         });
 
-        // Login button in sidebar
-        this.loginSidebarBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.showLoginModal();
-        });
+
 
         // Profile button
         this.profileBtn.addEventListener('click', (e) => {
@@ -174,11 +170,7 @@ const SidebarComponent = {
         });
     },
 
-    showLoginModal() {
-        if (window.ModalComponent) {
-            ModalComponent.showModal('login-modal');
-        }
-    },
+
 
     showProfileModal() {
         if (window.ModalComponent) {
@@ -743,77 +735,5 @@ const SidebarComponent = {
         this.sidebar.classList.remove('active');
         this.isOpen = false;
         document.body.style.overflow = '';
-    },
-
-    showLoginModal() {
-        const modal = document.getElementById('login-modal');
-        modal.classList.add('active');
-
-        const closeBtn = modal.querySelector('#close-login-modal');
-        closeBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-
-        const demoLogin = document.getElementById('demo-login');
-        const demoSignup = document.getElementById('demo-signup');
-
-        demoLogin.addEventListener('click', () => {
-            alert('Login simulation successful!');
-            modal.classList.remove('active');
-        });
-
-        demoSignup.addEventListener('click', () => {
-            alert('Signup simulation successful!');
-            modal.classList.remove('active');
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-            }
-        });
-    },
-
-    showProfileModal() {
-        const modal = document.getElementById('profile-modal');
-        modal.classList.add('active');
-
-        const closeBtn = modal.querySelector('#close-profile-modal');
-        closeBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-
-        const cancelBtn = modal.querySelector('.cancel-btn');
-        cancelBtn.addEventListener('click', () => {
-            modal.classList.remove('active');
-        });
-
-        const currentProfile = AppState.getProfile();
-        if (currentProfile) {
-            document.getElementById('name').value = currentProfile.name || 'Rahul Kumar';
-            document.getElementById('location').value = currentProfile.location || 'Bihar, Rural';
-            document.getElementById('education').value = currentProfile.education || 'Science Stream (12th)';
-            document.getElementById('finance').value = currentProfile.finance || 'Medium';
-            document.getElementById('interests').value = currentProfile.interests || 'Engineering, Computer Science, Government Jobs';
-        }
-
-        const form = document.getElementById('profile-form');
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            AppState.saveProfile({
-                name: document.getElementById('name').value,
-                location: document.getElementById('location').value,
-                education: document.getElementById('education').value,
-                finance: document.getElementById('finance').value,
-                interests: document.getElementById('interests').value
-            });
-            modal.classList.remove('active');
-        };
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-            }
-        });
     }
 };

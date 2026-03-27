@@ -137,11 +137,23 @@ class CollegePredictor:
                 self.cutoff_data = json.load(f)
             print(f"[OK] Loaded cutoff data for {len(self.cutoff_data)} colleges")
 
-        college_path = os.path.join(self.data_dir, "kea_colleges_complete.json")
+        # Prefer college_master.json (228 colleges) over kea_colleges_complete.json (40)
+        master_path   = os.path.join(self.data_dir, "college_master.json")
+        fallback_path = os.path.join(self.data_dir, "kea_colleges_complete.json")
+        college_path  = master_path if os.path.exists(master_path) else fallback_path
+
         if os.path.exists(college_path):
             with open(college_path, 'r', encoding='utf-8') as f:
                 self.college_data = json.load(f)
-            print(f"[OK] Loaded college details for {len(self.college_data)} colleges")
+            print(f"[OK] Loaded college details for {len(self.college_data)} colleges from {os.path.basename(college_path)}")
+
+        # Build quick lookup: college_id -> cutoff_trends (5-year data)
+        self.cutoff_trends_lookup = {}
+        for c in self.college_data:
+            cid = c.get('college_id')
+            if cid and c.get('cutoff_trends'):
+                self.cutoff_trends_lookup[cid] = c['cutoff_trends']
+
 
     # ========================================================================
     # KCET RANK CALCULATOR  (50% KCET + 50% PUC)
@@ -651,11 +663,16 @@ class CollegePredictor:
                 if coordinates and isinstance(coordinates, dict) and 'lat' in coordinates:
                     map_link = f"https://maps.google.com/?q={coordinates['lat']},{coordinates['lng']}"
 
-                # Historical cutoffs for sparkline
+                # Historical cutoffs for 5-year sparkline (GM rank per year)
                 historical_cutoffs = {}
                 allcutoffs = college.get("cutoffs", {})
-                for yr in ["2022", "2023", "2024"]:
-                    historical_cutoffs[yr] = allcutoffs.get(yr, {}).get(branch, {}).get("GM", 0)
+                for yr in ["2020", "2021", "2022", "2023", "2024"]:
+                    val = allcutoffs.get(yr, {}).get(branch, {}).get("GM", 0)
+                    if val:
+                        historical_cutoffs[yr] = val
+
+                # Full 5-year cutoff_trends from college_master (all categories)
+                cutoff_trends = self.cutoff_trends_lookup.get(college_id, {})
 
                 predictions.append({
                     "college_id": college_id,
@@ -695,9 +712,11 @@ class CollegePredictor:
                     "trend": trend_data["label"],
                     "trend_value": trend_data.get("value", 0),
                     "historical_cutoffs": historical_cutoffs,
+                    "cutoff_trends": cutoff_trends,   # Full 5-year branch+category data
                     "roi_label": roi["label"],
                     "roi_score": roi["score"],
                 })
+
 
         # ---- SORT: KEA Priority (Match Score → Probability) ----
         predictions.sort(key=lambda x: (x["match_index"], x["probability"]), reverse=True)

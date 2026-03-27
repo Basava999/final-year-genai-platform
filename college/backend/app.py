@@ -19,13 +19,7 @@ from models import College, FeeStructure
 # AI modules for chat functionality
 try:
     from rag_engine import get_rag_engine, RAGEngine
-    from llm_service import get_llm_service, OllamaService
-    from prompt_templates import (
-        COUNSELOR_SYSTEM_PROMPT,
-        build_contextual_prompt,
-        detect_query_type,
-        QUICK_RESPONSES
-    )
+    from llm_service import get_llm_service, MultiLLMOrchestrator
     AI_MODULES_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: AI modules not fully loaded: {e}")
@@ -428,215 +422,97 @@ student_profiles = {}
 @app.route("/api/chat", methods=["POST"])
 def chat():
     """
-    Main AI chat endpoint.
-    Accepts: { "message": "...", "profile": {...}, "session_id": "..." }
-    Returns: { "response": "...", "query_type": "..." }
+    Main AI chat endpoint (non-streaming).
+    Uses MultiLLMOrchestrator: Sarvam AI + Llama 3 + DeepSeek R1 + Mixtral.
     """
     if not AI_MODULES_AVAILABLE:
-        return jsonify({
-            "response": "AI modules are not available. Please ensure all dependencies are installed.",
-            "error": True
-        }), 500
-    
+        return jsonify({"response": "AI modules unavailable.", "error": True}), 500
+
     try:
-        data = request.json
+        data        = request.json or {}
         user_message = data.get("message", "").strip()
-        profile = data.get("profile", {})
-        session_id = data.get("session_id", "default")
-        chat_history = data.get("history", [])  # Previous messages for context
-        
+        profile      = data.get("profile", {})
+        session_id   = data.get("session_id", "default")
+        chat_history = data.get("history", [])
+
         if not user_message:
             return jsonify({"response": "Please enter a message.", "error": True}), 400
-        
-        # Store/update profile
+
+        # Persist student profile for session
         if profile:
             student_profiles[session_id] = profile
         else:
             profile = student_profiles.get(session_id, {})
-        
-        print(f"\n=== CHAT REQUEST ===")
-        print(f"Message: {user_message[:100]}...")
-        print(f"Profile: {profile}")
-        
-        # Detect query type
-        query_type = detect_query_type(user_message)
-        print(f"Query type: {query_type}")
-        
-        # Map query type to collection for targeted search
-        collection_map = {
-            'college': 'colleges',
-            'scholarship': 'scholarships',
-            'loan': 'loans',
-            'hostel': 'hostels',
-            'counseling': 'counseling',
-            'fee': 'fees'
-        }
-        target_collection = collection_map.get(query_type)  # None for 'general' -> searches all
-        
-        # Get RAG context
-        rag_engine = get_rag_engine()
-        context_results = rag_engine.search(
-            user_message, 
-            collection_name=target_collection,
-            n_results=8
+
+        orchestrator = get_llm_service()
+        response = orchestrator.generate_response(
+            query=user_message,
+            chat_history=chat_history[-12:],
+            session_id=session_id,
+            session_profile=profile if profile else None,
         )
-        
-        # Build context string from results
-        context = "\n\n".join([r.get("content", "") for r in context_results])
-        
-        # If college query with rank, get specific recommendations + fee data
-        if query_type == 'college' and profile.get('kcet_rank'):
-            rank = int(profile.get('kcet_rank', 0))
-            branch = profile.get('branch', 'CSE')
-            category = profile.get('category', 'GM')
-            eligible_colleges = rag_engine.get_colleges_by_rank(rank, branch, category)
-            if eligible_colleges:
-                context += "\n\n## Eligible Colleges for Student:\n"
-                for c in eligible_colleges[:10]:
-                    fee_info = c.get('fee', {})
-                    fee_str = f"GM: \u20b9{fee_info.get('gm', 'N/A')}, SC/ST: \u20b9{fee_info.get('sc_st', fee_info.get('sc_st', 'N/A'))}" if fee_info else ""
-                    context += f"- {c['college']} ({c['location']}) - Cutoff: {c['cutoff']} | Fee: {fee_str}\n"
-            # Also add fee structure context for the query
-            fee_results = rag_engine.search("fee structure", collection_name="fees", n_results=3)
-            if fee_results:
-                context += "\n\n## Fee Structures:\n"
-                context += "\n".join([r.get("content", "") for r in fee_results])
-        
-        # If scholarship query, get eligible scholarships
-        if query_type == 'scholarship' and profile.get('category'):
-            category = profile.get('category', 'General')
-            income = int(profile.get('income', profile.get('family_income', 500000)))
-            eligible_scholarships = rag_engine.get_eligible_scholarships(category, income)
-            if eligible_scholarships:
-                context += "\n\n## Eligible Scholarships:\n"
-                for s in eligible_scholarships:
-                    benefits = s.get('benefits', {})
-                    context += f"- {s['name']} | Deadline: {s['deadline']} | Portal: {s.get('portal', 'N/A')}\n"
-        
-        # Custom prompt for voice integration
-        is_voice = request.json.get('feature') == 'voice'
-        if is_voice:
-            # Append voice-specific instruction to prompt
-            prompt = build_contextual_prompt(user_message, profile, context, query_type)
-            prompt += "\n\nIMPORTANT: The user is speaking via voice. Keep your response CONCISE, conversational, and under 3 sentences if possible. Avoid long lists."
-            print("[*] Optimized prompt for Voice Counselor")
-        else:
-            prompt = build_contextual_prompt(user_message, profile, context, query_type)
-        
-        # Get LLM response with conversation history for context
-        llm_service = get_llm_service()
-        response = llm_service.generate(
-            prompt=prompt,
-            system_prompt=COUNSELOR_SYSTEM_PROMPT,
-            temperature=0.75,
-            chat_history=chat_history[-6:]  # Last 6 messages for memory
-        )
-        
-        print(f"Response length: {len(response)} chars")
-        
-        return jsonify({
-            "response": response,
-            "query_type": query_type,
-            "context_used": len(context_results)
-        })
-        
+
+        return jsonify({"response": response, "session_id": session_id})
+
     except Exception as e:
-        print(f"[ERROR] in chat: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({
-            "response": f"Sorry, an error occurred: {str(e)}",
-            "error": True
-        }), 500
+        print(f"[ERROR] /api/chat: {e}")
+        import traceback; print(traceback.format_exc())
+        return jsonify({"response": "Sorry, something went wrong. Please try again.", "error": True}), 500
 
 
 @app.route("/api/chat/stream", methods=["POST"])
 def chat_stream():
     """
-    Streaming AI chat endpoint for real-time responses.
-    Returns: Server-Sent Events (SSE) stream
+    Streaming AI chat endpoint — SSE token stream.
+    Pipeline: profile fetch → ChromaDB RAG → LLaMA 3 (Ollama local) → token stream.
+    Fallback: RAG-only response if Ollama is offline.
     """
     if not AI_MODULES_AVAILABLE:
-        return jsonify({"error": "AI modules not available"}), 500
-    
-    data = request.json
+        return jsonify({"error": "AI modules unavailable"}), 500
+
+    data         = request.json or {}
     user_message = data.get("message", "").strip()
-    profile = data.get("profile", {})
-    chat_history = data.get("history", [])  # Previous messages for context
-    
+    profile      = data.get("profile", {})
+    session_id   = data.get("session_id", "default")
+    chat_history = data.get("history", [])
+
+    if profile:
+        student_profiles[session_id] = profile
+    else:
+        profile = student_profiles.get(session_id, {})
+
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
-    
+
     def generate():
         try:
-            # Get RAG context
-            rag_engine = get_rag_engine()
-            query_type = detect_query_type(user_message)
-            
-            # Map query type to collection for targeted search
-            collection_map = {
-                'college': 'colleges',
-                'scholarship': 'scholarships',
-                'loan': 'loans',
-                'hostel': 'hostels',
-                'counseling': 'counseling',
-                'fee': 'fees'
-            }
-            target_collection = collection_map.get(query_type)
-            
-            context_results = rag_engine.search(user_message, collection_name=target_collection, n_results=8)
-            context = "\n\n".join([r.get("content", "") for r in context_results])
-            
-            # Enrich college queries with rank-based recommendations
-            if query_type == 'college' and profile.get('kcet_rank'):
-                rank = int(profile.get('kcet_rank', 0))
-                branch = profile.get('branch', 'CSE')
-                category = profile.get('category', 'GM')
-                eligible = rag_engine.get_colleges_by_rank(rank, branch, category)
-                if eligible:
-                    context += "\n\n## Eligible Colleges:\n"
-                    for c in eligible[:10]:
-                        fee_info = c.get('fee', {})
-                        fee_str = f"GM: \u20b9{fee_info.get('gm', 'N/A')}" if fee_info else ""
-                        context += f"- {c['college']} ({c['location']}) - Cutoff: {c['cutoff']} | Fee: {fee_str}\n"
-            
-            # Enrich scholarship queries
-            if query_type == 'scholarship' and profile.get('category'):
-                cat = profile.get('category', 'General')
-                income = int(profile.get('income', profile.get('family_income', 500000)))
-                eligible = rag_engine.get_eligible_scholarships(cat, income)
-                if eligible:
-                    context += "\n\n## Eligible Scholarships:\n"
-                    for s in eligible:
-                        context += f"- {s['name']} | Deadline: {s['deadline']}\n"
-            
-            # Build prompt
-            prompt = build_contextual_prompt(user_message, profile, context, query_type)
-            
-            # Stream LLM response with conversation history
-            llm_service = get_llm_service()
-            for chunk in llm_service.generate_stream(
-                prompt=prompt,
-                system_prompt=COUNSELOR_SYSTEM_PROMPT,
-                temperature=0.75,
-                chat_history=chat_history[-6:]
+            counselor = get_llm_service()
+
+            for token in counselor.stream_response(
+                query=user_message,
+                chat_history=chat_history[-12:],
+                session_id=session_id,
+                session_profile=profile if profile else None,
             ):
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-            
-            yield f"data: {json.dumps({'done': True})}\n\n"
-            
+                yield f"data: {json.dumps({'chunk': token})}\n\n"
+
+            yield f"data: {json.dumps({'done': True, 'model': 'LLaMA 3 (Ollama)'})}\n\n"
+
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-    
+            print(f"[ERROR] /api/chat/stream generate(): {e}")
+            import traceback; print(traceback.format_exc())
+            yield f"data: {json.dumps({'chunk': 'I ran into a small issue. Please try again!'})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+
     return Response(
         stream_with_context(generate()),
-        mimetype='text/event-stream',
+        mimetype="text/event-stream",
         headers={
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no'
-        }
+            "Cache-Control":   "no-cache",
+            "Connection":      "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
-
 
 @app.route("/api/recommend/colleges", methods=["POST"])
 def recommend_colleges():
@@ -755,26 +631,25 @@ def manage_profile():
 
 @app.route("/api/ai/status", methods=["GET"])
 def ai_status():
-    """Check AI system status."""
+    """Check AI system status (Ollama + ChromaDB RAG)."""
     status = {
         "ai_modules_available": AI_MODULES_AVAILABLE,
-        "ollama_connected": False,
-        "rag_indexed": False
+        "ollama_connected":     False,
+        "ollama_model":         "llama3",
+        "rag_indexed":          False,
+        "pipeline":             "local-ollama-llama3-chromadb-rag",
     }
-    
+
     if AI_MODULES_AVAILABLE:
         try:
-            llm_service = get_llm_service()
-            status["ollama_connected"] = llm_service._check_connection()
-        except:
+            counselor = get_llm_service()
+            detail = counselor.get_status()
+            status["ollama_connected"] = detail.get("ollama", {}).get("available", False)
+            status["ollama_model"]     = detail.get("ollama", {}).get("model", "llama3")
+            status["rag_indexed"]      = detail.get("rag_engine", {}).get("available", False)
+        except Exception:
             pass
-        
-        try:
-            rag_engine = get_rag_engine()
-            status["rag_indexed"] = True
-        except:
-            pass
-    
+
     return jsonify(status)
 
 
@@ -798,8 +673,11 @@ def predict_college():
         
         # Validate required fields
         if 'kcet_rank' not in data or 'category' not in data:
-            return jsonify({"success": False, "error": "Missing rank or category"}), 400
-            
+            return jsonify({
+                "success": False,
+                "error": "Missing required fields: kcet_rank, category"
+            }), 400
+
         # Get predictor instance
         predictor = get_predictor()
         
@@ -820,11 +698,84 @@ def predict_college():
         return jsonify(result)
         
     except Exception as e:
-        traceback.print_exc()
+        print(f"❌ ERROR in predict_college: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({
-            "success": False,
+            "success": False, 
             "error": str(e)
         }), 500
+
+
+# ============================================================================
+# GEN AI CAREER SIMULATOR ENDPOINT
+# ============================================================================
+
+@app.route('/api/simulate-career', methods=['POST'])
+def simulate_career():
+    """
+    Generative AI Career Simulator.
+    Accepts: { "rank": 5000, "category": "2A", "branch": "CSE", "interests": "Robotics, AI" }
+    Returns: JSON with 3 career paths + Future Artifact
+    """
+    if not AI_MODULES_AVAILABLE:
+        return jsonify({"error": "AI modules not available"}), 503
+        
+    data = request.json
+    rank = data.get('rank')
+    category = data.get('category')
+    branch = data.get('branch')
+    interests = data.get('interests', 'Technology, Engineering')
+    
+    if not all([rank, category, branch]):
+        return jsonify({"error": "Missing required fields"}), 400
+        
+    try:
+        from prompt_templates import CAREER_SIMULATION_SYSTEM_PROMPT, CAREER_SIMULATION_USER_PROMPT
+        
+        user_prompt = CAREER_SIMULATION_USER_PROMPT.format(
+            rank=rank,
+            category=category,
+            branch=branch,
+            interests=interests
+        )
+        
+        print(f"\n=== CAREER SIMULATION ===")
+        print(f"Generating paths for Rank {rank}, {branch}...")
+        
+        llm_service = get_llm_service()
+        # Force JSON mode by appending requirement to system prompt if model supports, 
+        # or just relying on the prompt instructions.
+        response_text = llm_service.generate(
+            prompt=user_prompt,
+            system_prompt=CAREER_SIMULATION_SYSTEM_PROMPT,
+            temperature=0.8, # Higher creativity for "Dream" paths
+            max_tokens=2000
+        )
+        
+        # Clean response to ensure valid JSON (sometimes LLMs add text before/after)
+        response_text = response_text.strip()
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+            
+        try:
+            result = json.loads(response_text)
+            return jsonify({
+                "success": True,
+                "data": result
+            })
+        except json.JSONDecodeError:
+            print(f"[!] Invalid JSON from LLM: {response_text[:100]}...")
+            return jsonify({
+                "success": False,
+                "error": "Failed to generate valid simulation data. Please try again."
+            }), 500
+            
+    except Exception as e:
+        print(f"[ERROR] in simulate_career: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/api/predict/status', methods=['GET'])

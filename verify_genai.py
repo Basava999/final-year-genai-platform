@@ -66,6 +66,16 @@ def run_verification():
         "feature": "chat"
     }
     test_endpoint("Standard Chat", "POST", "/chat", chat_data)
+    test_endpoint("Standard Chat", "POST", "/chat", chat_data)
+
+    # 5. Career Simulator (New)
+    career_data = {
+        "rank": 5000,
+        "category": "2A",
+        "branch": "CSE",
+        "interests": "Artificial Intelligence, Space Tech"
+    }
+    test_endpoint("Career Simulator", "POST", "/api/simulate-career", career_data)
 
     print("\n" + "="*50)
     print("Verification Complete")

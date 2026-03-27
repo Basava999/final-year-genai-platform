@@ -655,8 +655,8 @@ const PredictorComponent = {
                     ` : ''}
                 </div>
                 <!-- Sparkline Section -->
-                <div class="sparkline-container" title="3-Year Cutoff Trend (2022-2024)">
-                    <div class="sparkline-label">Rank Trend</div>
+                <div class="sparkline-container" title="5-Year Cutoff Trend (2020-2024)">
+                    <div class="sparkline-label">5-Yr Trend</div>
                     ${sparklineHTML}
                 </div>
                 <div class="prediction-meta">
@@ -667,6 +667,8 @@ const PredictorComponent = {
                     <div class="probability-text">${pred.probability}%</div>
                     <span class="category-badge ${categoryClass}">${pred.category}</span>
                 </div>
+                <!-- 5-Year Cutoff Section -->
+                ${this.renderCutoffSection(pred)}
             </div>
         `;
     },
@@ -683,17 +685,58 @@ const PredictorComponent = {
     },
 
     renderSparkline(history) {
-        if (!history || !history["2024"]) return '<div class="no-trend">N/A</div>';
-        const points = [history["2022"], history["2023"], history["2024"]].filter(v => v > 0);
+        const years = ['2020', '2021', '2022', '2023', '2024'];
+        if (!history) return '<div class="no-trend">N/A</div>';
+        const points = years.map(y => history[y] || 0).filter(v => v > 0);
         if (points.length < 2) return '<div class="no-trend">Stable</div>';
         const max = Math.max(...points);
         const min = Math.min(...points);
         const range = max - min || 1;
-        const normalized = points.map(p => 40 - ((p - min) / range * 30));
-        const pathData = normalized.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * 30} ${p}`).join(' ');
-        return `<svg class="sparkline-svg" width="65" height="40" viewBox="0 0 60 40">
-            <path d="${pathData}" fill="none" stroke="${points[points.length - 1] < points[0] ? '#ef4444' : '#22c55e'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+        const w = 12; // x spacing per year
+        const normalized = points.map(p => 38 - ((p - min) / range * 30));
+        const pathData = normalized.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * w} ${p}`).join(' ');
+        const isImproving = points[points.length - 1] < points[0]; // lower rank = better
+        const color = isImproving ? '#22c55e' : '#ef4444';
+        const yearLabels = years.filter((y, i) => points[i] > 0);
+        return `<svg class="sparkline-svg" width="60" height="44" viewBox="0 0 ${(yearLabels.length - 1) * w} 44">
+            <path d="${pathData}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            ${normalized.map((p, i) => `<circle cx="${i * w}" cy="${p}" r="2.5" fill="${color}"/>`).join('')}
         </svg>`;
+    },
+
+    renderCutoffSection(pred) {
+        const trends = pred.cutoff_trends || {};
+        const branch = pred.branch || 'CSE';
+        const years = ['2020', '2021', '2022', '2023', '2024'];
+        const hasData = Object.keys(trends).some(y => trends[y]?.[branch]);
+        if (!hasData) return '';
+        const cardId = `cutoff-${pred.college_name?.replace(/\s+/g, '_')}_${branch}`.replace(/[^a-zA-Z0-9_]/g, '');
+        const rows = years.filter(y => trends[y]?.[branch]).map(y => {
+            const c = trends[y][branch];
+            return `<tr>
+              <td><strong>${y}</strong></td>
+              <td>${(c.GM || '-').toLocaleString?.() ?? c.GM}</td>
+              <td>${(c.OBC || '-').toLocaleString?.() ?? c.OBC}</td>
+              <td>${(c.SC || '-').toLocaleString?.() ?? c.SC}</td>
+              <td>${(c.ST || '-').toLocaleString?.() ?? c.ST}</td>
+            </tr>`;
+        }).join('');
+        return `
+        <div class="cutoff-section">
+            <button class="cutoff-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="View 5-year KCET cutoffs">
+                📊 5-Year Cutoffs (${branch})
+                <span class="cutoff-arrow">▼</span>
+            </button>
+            <div class="cutoff-table-wrap">
+                <table class="cutoff-table">
+                    <thead><tr>
+                        <th>Year</th><th>GM</th><th>OBC</th><th>SC</th><th>ST</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <p class="cutoff-note">*Lower rank = better. Source: KEA KCET Allotment Data 2020-2024</p>
+            </div>
+        </div>`;
     },
 
     // ====== HERO STATS COUNTER ANIMATION ======

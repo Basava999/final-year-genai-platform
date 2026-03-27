@@ -66,13 +66,20 @@ const ModalComponent = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('active');
+            modal.style.display = 'flex';
             // Pre-fill profile form with saved data
             if (modalId === 'profile-modal' && typeof AppState !== 'undefined') {
                 const profile = AppState.getProfile();
                 const nameInput = document.getElementById('name');
                 const locationInput = document.getElementById('location');
+                const educationInput = document.getElementById('education');
+                const financeInput = document.getElementById('finance');
+                const interestsInput = document.getElementById('interests');
                 if (nameInput && profile.name) nameInput.value = profile.name;
                 if (locationInput && profile.location) locationInput.value = profile.location;
+                if (educationInput && profile.education) educationInput.value = profile.education;
+                if (financeInput && profile.finance) financeInput.value = profile.finance;
+                if (interestsInput && profile.interests) interestsInput.value = profile.interests;
             }
         }
     },
@@ -81,6 +88,7 @@ const ModalComponent = {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('active');
+            modal.style.display = 'none';
         }
     },
 
@@ -132,17 +140,23 @@ const ModalComponent = {
         const finance = document.getElementById('finance')?.value;
         const interests = document.getElementById('interests')?.value?.trim();
 
+        const profileData = {
+            name: name || '',
+            location: location || '',
+            education: education || '',
+            finance: finance || '',
+            interests: interests || ''
+        };
+
         if (typeof AppState !== 'undefined') {
-            AppState.saveProfile({
-                name: name || '',
-                location: location || '',
-                education: education || '',
-                finance: finance || '',
-                interests: interests || ''
-            });
+            AppState.saveProfile(profileData);
         }
 
+        // Close the modal
         this.hideModal('profile-modal');
+
+        // Show success feedback
+        console.log('✅ Profile saved:', profileData);
     },
 
     createLoginModal() {
@@ -218,6 +232,9 @@ const ModalComponent = {
     createProfileModal() {
         const modal = document.getElementById('profile-modal');
         if (!modal) return;
+
+        // Ensure modal is hidden initially
+        modal.style.display = 'none';
 
         modal.innerHTML = `
             <div class="modal-content">

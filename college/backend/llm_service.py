@@ -1,428 +1,503 @@
-# InsightRural LLM Service
-# This module handles integration with Groq Cloud API for LLM inference
+# ==============================================================================
+# InsightRural — Ollama + LLaMA 3 Local AI Pipeline
+# ==============================================================================
+# Architecture (as explained in project design):
+#
+#   Student Query
+#       ↓
+#   Flask fetches stored student profile (name, KCET rank, category,
+#       income, branch, location, budget, hostel_needed, etc.)
+#       ↓
+#   RAG Engine → ChromaDB cosine similarity → top-8 relevant docs
+#   (college data, cutoffs, scholarships, hostels, fees, counseling)
+#       ↓
+#   Prompt Builder → packages profile + RAG context + history into
+#       a single structured prompt block (JSON context injection)
+#       ↓
+#   Ollama local server (llama3) → Transformer decoder reasoning
+#       → generates personalized guidance
+#       ↓
+#   Token-by-token SSE stream → Frontend Chat Interface
+#
+# Offline-capable, private, no API keys needed.
+# All student data stays on-device.
+# ==============================================================================
 
 import json
 import os
+import time
+import httpx
 from typing import Generator, Dict, Any, Optional, List
 
-# Try to import Groq
-try:
-    from groq import Groq
-    GROQ_AVAILABLE = True
-except ImportError:
-    GROQ_AVAILABLE = False
-    print("Warning: Groq not installed. Run: pip install groq")
+# ── Ollama Config ─────────────────────────────────────────────────────────────
+OLLAMA_HOST  = os.environ.get("OLLAMA_HOST",  "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
 
-# Groq API configuration - read at runtime, not import time
-# Using 70B model for ChatGPT-like contextual understanding
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+# ── System Persona ────────────────────────────────────────────────────────────
+COUNSELOR_SYSTEM_PROMPT = """You are InsightRural AI — an empathetic, highly intelligent educational counselor built specifically for rural Karnataka students navigating the KCET and KEA college admission process.
+
+Your core purpose: Help students make the BEST decisions about:
+• KCET college admissions (all 228 KEA colleges)
+• Branch selection (CSE, AI/ML, ECE, ME, Civil, etc.)
+• Scholarship opportunities (SC/ST/OBC government schemes, private scholarships)
+• Education loans (Vidya Lakshmi, bank loans, NBCFDC)
+• Hostel and accommodation guidance
+• Career path planning and future scope
+
+Your personality:
+• Warm, encouraging, and respectful — like a caring senior mentor
+• Data-driven — always cite ranks, fees, cutoffs when answering
+• Practical — give actionable step-by-step guidance
+• Honest — never give false hope; be realistic but optimistic
+• Multilingual awareness — respond in the same language the student uses (English/Kannada/Hinglish)
+
+Response style:
+• Use **bold** for important numbers (ranks, fees, cutoffs)
+• Use bullet points for lists of colleges/options
+• Keep responses thorough but not overwhelming
+• End responses with an encouraging line or a relevant follow-up question
+• For cutoffs: always mention GM, OBC, SC/ST separately when data is available
+
+CRITICAL RULES:
+• Only recommend colleges from the KEA dataset provided in the context
+• Always mention fee structure (Government≈₹44K/yr, Type-1≈₹1.12L/yr, Deemed=₹2-4L/yr)
+• If a student's rank is beyond a cutoff, suggest realistic alternatives
+• For reserved categories: always highlight the significant fee waiver for SC/ST
+• NEVER invent cutoff ranks not present in the provided context
+• NEVER say "As an AI..." or "I cannot..." — you are their trusted mentor"""
 
 
-class GroqService:
+# ==============================================================================
+# OLLAMA SERVICE — wraps the local Ollama HTTP API
+# ==============================================================================
+class OllamaService:
     """
-    Service for interacting with Groq Cloud LLM API.
-    Supports both streaming and non-streaming responses.
-    Uses Llama 3.3 70B model by default.
+    Communicates with a locally-running Ollama server.
+    Supports both streaming and non-streaming generation via /api/chat.
     """
-    
-    def __init__(self, api_key: str = None, model: str = None):
-        """
-        Initialize the Groq service.
-        
-        Args:
-            api_key: Groq API key (or set GROQ_API_KEY env var)
-            model: Model name to use (e.g., 'llama-3.3-70b-versatile')
-        """
-        # Always read API key fresh from environment
-        self.api_key = api_key or os.environ.get("GROQ_API_KEY", "")
-        self.model = model or os.environ.get("GROQ_MODEL", DEFAULT_MODEL)
-        self.client = None
-        self._initialize_client()
-    
-    def _initialize_client(self) -> bool:
-        """Initialize the Groq client."""
-        if not GROQ_AVAILABLE:
-            print("Warning: Groq package not installed")
-            return False
-        
-        if not self.api_key:
-            print("Warning: GROQ_API_KEY not set. Get one free at https://console.groq.com/keys")
-            return False
-        
+
+    def __init__(self, host: str = None, model: str = None):
+        self.host  = (host or OLLAMA_HOST).rstrip("/")
+        self.model = model or OLLAMA_MODEL
+        self.available = False
+        self._check_health()
+
+    def _check_health(self):
+        """Check if Ollama is running and the model is available."""
         try:
-            self.client = Groq(api_key=self.api_key)
-            print(f"[OK] Groq client initialized with model: {self.model}")
-            return True
-        except Exception as e:
-            print(f"Warning: Failed to initialize Groq client: {e}")
-            return False
-    
-    def _check_connection(self) -> bool:
-        """Check if Groq API is accessible."""
-        if not self.client:
-            return False
-        try:
-            # Try a simple API call to verify connection
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": "Hi"}],
-                max_tokens=5
-            )
-            return True
-        except Exception as e:
-            print(f"Warning: Groq connection check failed: {e}")
-            return False
-    
-    def generate(self, prompt: str, system_prompt: str = None, 
-                 temperature: float = 0.7, max_tokens: int = 2048,
-                 chat_history: list = None) -> str:
-        """
-        Generate a response from the LLM (non-streaming).
-        
-        Args:
-            prompt: User's prompt/question
-            system_prompt: System instructions for the model
-            temperature: Creativity (0.0-1.0)
-            max_tokens: Maximum response length
-            chat_history: Previous conversation messages [{"role": "user"/"assistant", "content": "..."}]
-            
-        Returns:
-            Generated response text
-        """
-        if not self.client:
-            return self._get_smart_fallback(prompt)
-        
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        
-        # Inject conversation history for memory/context
-        if chat_history:
-            for msg in chat_history:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role in ("user", "assistant") and content:
-                    messages.append({"role": role, "content": content})
-        
-        messages.append({"role": "user", "content": prompt})
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"Groq API error: {e}")
-            return self._get_smart_fallback(prompt)
-    
-    def generate_stream(self, prompt: str, system_prompt: str = None,
-                        temperature: float = 0.7, chat_history: list = None) -> Generator[str, None, None]:
-        """
-        Generate a streaming response from the LLM.
-        
-        Args:
-            prompt: User's prompt/question
-            system_prompt: System instructions
-            temperature: Creativity level
-            chat_history: Previous conversation messages
-            
-        Yields:
-            Response text chunks
-        """
-        if not self.client:
-            yield self._get_smart_fallback(prompt)
-            return
-        
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        
-        # Inject conversation history for memory
-        if chat_history:
-            for msg in chat_history:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role in ("user", "assistant") and content:
-                    messages.append({"role": role, "content": content})
-        
-        messages.append({"role": "user", "content": prompt})
-        
-        try:
-            stream = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                stream=True
-            )
-            
-            for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-                    
-        except Exception as e:
-            print(f"Groq streaming error: {e}")
-            yield self._get_smart_fallback(prompt)
-    
-    def chat(self, messages: List[Dict[str, str]], 
-             temperature: float = 0.7) -> str:
-        """
-        Chat completion with message history.
-        
-        Args:
-            messages: List of {"role": "user"|"assistant"|"system", "content": "..."}
-            temperature: Creativity level
-            
-        Returns:
-            Assistant's response
-        """
-        if not self.client:
-            user_msg = next((m['content'] for m in reversed(messages) if m['role'] == 'user'), '')
-            return self._get_fallback_response(user_msg)
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"Groq chat error: {e}")
-            user_msg = next((m['content'] for m in reversed(messages) if m['role'] == 'user'), '')
-            return self._get_fallback_response(user_msg)
-    
-    def _get_fallback_response(self, query: str) -> str:
-        """
-        Provide a fallback response when Groq is not available.
-        This uses simple keyword-based responses.
-        """
-        query_lower = query.lower()
-        
-        if 'college' in query_lower or 'kcet' in query_lower or 'rank' in query_lower:
-            return """I apologize, but I'm currently running in offline mode without AI capabilities.
-
-**For college recommendations based on your KCET rank:**
-- Use our College Explorer feature to see cutoff data
-- Top colleges like RVCE, BMSCE have cutoffs around 500-3000 for CSE
-- Government colleges have cutoffs around 10,000-20,000
-
-To enable full AI responses, please ensure GROQ_API_KEY is set:
-1. Get a free API key from https://console.groq.com/keys
-2. Set environment variable: GROQ_API_KEY=your-key
-3. Restart the application"""
-        
-        elif 'scholarship' in query_lower:
-            return """I'm currently in offline mode.
-
-**Key Karnataka Scholarships:**
-- **SC/ST students**: Post-Matric Scholarship (income < 2.5 lakhs) - Full fee reimbursement
-- **OBC students**: Category 1-3 scholarships available
-- **All categories**: AICTE Pragati for girls, Central Sector Scheme
-
-Apply at: ssp.postmatric.karnataka.gov.in
-
-To get personalized scholarship recommendations, please set your GROQ_API_KEY."""
-        
-        elif 'loan' in query_lower or 'fee' in query_lower:
-            return """I'm currently in offline mode.
-
-**Education Loan Options:**
-- **SBI Student Loan**: Up to ₹15 lakhs, 8.5% interest
-- **Central Subsidy**: Full interest waiver for family income < 4.5 lakhs
-- **No collateral** required up to ₹7.5 lakhs
-
-Apply through Vidyalakshmi portal: www.vidyalakshmi.co.in
-
-For detailed guidance, please ensure GROQ_API_KEY is set."""
-        
-        elif 'hostel' in query_lower:
-            return """I'm in offline mode.
-
-**Hostel Options:**
-- **College hostels**: ₹40,000-80,000/year + mess
-- **Government hostels**: ₹8,000-15,000/year (subsidized)
-- **SC/ST free hostels**: Apply through Social Welfare department
-- **PGs in Bangalore**: ₹6,000-15,000/month
-
-Contact your college admission office for hostel availability."""
-        
-        else:
-            return """Hello! I'm InsightRural AI, your educational guidance assistant for Karnataka KEA students.
-
-I'm currently running in **offline mode**. To enable full AI capabilities:
-1. Get a free API key from https://console.groq.com/keys
-2. Set environment variable: GROQ_API_KEY=your-key-here
-3. Restart the application
-
-Meanwhile, you can still:
-- Browse college data using our explorer
-- View scholarship information
-- Check education loan options
-
-How can I help you today?"""
-
-    def _get_smart_fallback(self, query: str) -> str:
-        """
-        Provide smart fallback responses using RAG data when LLM is unavailable.
-        This parses the query and returns relevant data from JSON files.
-        """
-        import re
-        query_lower = query.lower()
-        
-        # Try to extract rank from query
-        rank_match = re.search(r'rank\s*(?:is|:)?\s*(\d+)', query_lower)
-        rank = int(rank_match.group(1)) if rank_match else None
-        
-        # Detect category
-        category = "GM"
-        if "obc" in query_lower:
-            category = "OBC"
-        elif "sc" in query_lower and "st" not in query_lower:
-            category = "SC"
-        elif "st" in query_lower:
-            category = "ST"
-        elif "general" in query_lower:
-            category = "GM"
-        
-        # Detect branch
-        branch = "CSE"
-        if "ece" in query_lower or "electronics" in query_lower:
-            branch = "ECE"
-        elif "mechanical" in query_lower or "mech" in query_lower:
-            branch = "ME"
-        elif "civil" in query_lower:
-            branch = "CE"
-        elif "electrical" in query_lower or "eee" in query_lower:
-            branch = "EEE"
-        
-        # College query with rank
-        if rank and ('college' in query_lower or 'get' in query_lower):
-            try:
-                import json
-                import os
-                data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
-                college_file = os.path.join(data_dir, 'kea_colleges_complete.json')
-                
-                with open(college_file, 'r', encoding='utf-8') as f:
-                    colleges = json.load(f)
-                
-                eligible = []
-                for college in colleges:
-                    cutoffs = college.get('cutoff_2024', {})
-                    branch_cutoff = cutoffs.get(branch, {})
-                    if isinstance(branch_cutoff, dict):
-                        cat_cutoff = branch_cutoff.get(category, branch_cutoff.get('GM', float('inf')))
-                        if rank <= cat_cutoff:
-                            eligible.append({
-                                "name": college['name'],
-                                "cutoff": cat_cutoff,
-                                "fee": college.get('annual_fee', {}).get('gm', 'N/A'),
-                                "location": college['location']
-                            })
-                
-                eligible.sort(key=lambda x: x['cutoff'])
-                
-                if eligible:
-                    response = f"""Based on your **KCET Rank {rank}** for **{branch}** ({category} category), here are colleges you can get:
-
-"""
-                    for i, c in enumerate(eligible[:8], 1):
-                        response += f"**{i}. {c['name']}** ({c['location']})\n"
-                        response += f"   - Cutoff: {c['cutoff']} | Fee: ₹{c['fee']}/year\n\n"
-                    
-                    response += f"\n*Total {len(eligible)} colleges found where you're eligible!*"
-                    return response
+            r = httpx.get(f"{self.host}/api/tags", timeout=5.0)
+            if r.status_code == 200:
+                data = r.json()
+                models = [m.get("name", "") for m in data.get("models", [])]
+                # Accept both "llama3" and "llama3:latest" style names
+                model_base = self.model.split(":")[0]
+                if any(model_base in m for m in models):
+                    self.available = True
+                    print(f"[OK] Ollama ready | model: {self.model} at {self.host}")
                 else:
-                    return f"""For rank {rank} in {branch} ({category}), no exact matches found in our database.
+                    # Model not pulled yet — still mark as available so we can try
+                    self.available = True
+                    print(f"[OK] Ollama running at {self.host}")
+                    print(f"[!]  Model '{self.model}' not found in pulled models: {models}")
+                    print(f"[!]  Run: ollama pull {self.model}")
+            else:
+                print(f"[WARN] Ollama returned HTTP {r.status_code}")
+        except Exception as e:
+            print(f"[WARN] Ollama not reachable at {self.host}: {e}")
+            print(f"[WARN] Start Ollama with: ollama serve")
+            self.available = False
 
-**Suggestions:**
-- Consider other branches where cutoffs may be higher
-- Look at government colleges in tier-2 cities
-- Apply to more colleges during counseling
+    def generate(self, messages: List[Dict], temperature: float = 0.7,
+                 max_tokens: int = 2048) -> Optional[str]:
+        """Non-streaming generation via /api/chat."""
+        if not self.available:
+            return None
+        try:
+            payload = {
+                "model": self.model,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "temperature": temperature,
+                    "num_predict": max_tokens,
+                }
+            }
+            r = httpx.post(
+                f"{self.host}/api/chat",
+                json=payload,
+                timeout=120.0
+            )
+            r.raise_for_status()
+            data = r.json()
+            return data.get("message", {}).get("content", "")
+        except Exception as e:
+            print(f"[Ollama] generate error: {e}")
+            return None
 
-Would you like me to check for other branches?"""
-                    
-            except Exception as e:
-                pass
-        
-        # Scholarship query
-        if 'scholarship' in query_lower:
-            try:
-                import json
-                import os
-                data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
-                sch_file = os.path.join(data_dir, 'scholarships.json')
-                
-                with open(sch_file, 'r', encoding='utf-8') as f:
-                    scholarships = json.load(f)
-                
-                response = f"""**Scholarships available for {category} students:**
-
-"""
-                count = 0
-                for sch in scholarships:
-                    elig_cats = [c.lower() for c in sch.get('eligibility', {}).get('category', [])]
-                    if category.lower() in elig_cats or 'all' in elig_cats:
-                        benefits = sch.get('benefits', {})
-                        response += f"**{sch['name']}**\n"
-                        response += f"   - Income limit: ₹{sch.get('eligibility', {}).get('income_limit', 'N/A')}\n"
-                        response += f"   - Portal: {sch.get('application_portal', 'N/A')}\n\n"
-                        count += 1
-                        if count >= 5:
+    def stream(self, messages: List[Dict], temperature: float = 0.7,
+               max_tokens: int = 2048) -> Generator[str, None, None]:
+        """Token-by-token streaming via /api/chat with stream=True."""
+        if not self.available:
+            return
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            }
+        }
+        try:
+            with httpx.stream(
+                "POST",
+                f"{self.host}/api/chat",
+                json=payload,
+                timeout=120.0
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                        content = chunk.get("message", {}).get("content", "")
+                        if content:
+                            yield content
+                        if chunk.get("done"):
                             break
-                
-                return response if count > 0 else self._get_fallback_response(query)
-                
-            except Exception:
-                pass
-        
-        # Default to basic fallback
-        return self._get_fallback_response(query)
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+        except Exception as e:
+            print(f"[Ollama] stream error: {e}")
 
 
-# Backwards compatibility alias
-OllamaService = GroqService
+# ==============================================================================
+# RAG FALLBACK — text response from ChromaDB when Ollama is offline
+# ==============================================================================
+class RAGFallback:
+    """Generates a data-driven response using only the RAG engine (no LLM needed)."""
 
+    def __init__(self, rag_engine=None):
+        self.rag = rag_engine
 
-# Create singleton instance
-_llm_service = None
+    def generate(self, query: str) -> str:
+        if not self.rag:
+            return self._static_response(query)
+        try:
+            results = self.rag.search(query, n_results=5)
+            if not results:
+                return self._static_response(query)
+            sections = []
+            for r in results[:4]:
+                content = r.get("content", "")[:500]
+                collection = r.get("collection", "").upper()
+                if content:
+                    sections.append(f"**[{collection}]** {content}")
+            body = "\n\n".join(sections)
+            return (
+                f"Based on the InsightRural database:\n\n{body}\n\n"
+                "---\n💡 **Tip:** Start Ollama (`ollama serve`) for full personalized guidance. "
+                "For now I've pulled the most relevant data from the knowledge base above."
+            )
+        except Exception:
+            return self._static_response(query)
 
-def get_llm_service() -> GroqService:
-    """Get or create the LLM service singleton."""
-    global _llm_service
-    if _llm_service is None:
-        _llm_service = GroqService()
-    # Re-initialize if client is None but API key is now available
-    elif _llm_service.client is None:
-        api_key = os.environ.get("GROQ_API_KEY", "")
-        if api_key:
-            print("[*] Re-initializing LLM service with new API key...")
-            _llm_service = GroqService()
-    return _llm_service
-
-
-if __name__ == "__main__":
-    # Test the LLM service
-    print("Testing Groq LLM Service...")
-    print(f"GROQ_API_KEY set: {'Yes' if os.environ.get('GROQ_API_KEY') else 'No'}")
-    
-    service = GroqService()
-    
-    if service.client:
-        print("\nSending test message...")
-        response = service.generate(
-            "What is 2 + 2? Reply in one word.",
-            system_prompt="You are a helpful assistant. Give very short answers."
+    def _static_response(self, query: str) -> str:
+        q = query.lower()
+        if any(w in q for w in ["cutoff", "rank", "seat", "college"]):
+            return (
+                "**KCET Cutoff Quick Reference (2024)**\n\n"
+                "• **Government colleges** (UVCE, SJCE Mysore): GM **850–3,000** | SC/ST up to 15,000\n"
+                "• **Type-1 Private** (RVCE, BMSCE, MSRIT): GM **600–5,000** | SC/ST up to 25,000\n"
+                "• **Type-2 Private** (DSCE, NIE): GM **3,000–15,000** | SC/ST up to 40,000\n\n"
+                "📊 Use the **College Predictor** for your exact rank analysis!"
+            )
+        if any(w in q for w in ["scholarship", "sc", "st", "obc", "fee waiver"]):
+            return (
+                "**Scholarship Quick Reference**\n\n"
+                "• **SC/ST Students**: Fee completely **FREE** at Government & Aided colleges\n"
+                "• **Post-Matric Scholarship** covers Type-1 fees up to ₹75,000/year\n"
+                "  Apply: ssp.postmatric.karnataka.gov.in\n"
+                "• **OBC Students**: Fee concession ₹23,590/year at Government colleges\n"
+                "• **Vidya Lakshmi** education loans: vidyalakshmi.co.in"
+            )
+        return (
+            "Hello! I'm InsightRural AI, your Karnataka college admission guide.\n\n"
+            "I can help you with:\n"
+            "• 🎓 **College predictions** based on your KCET rank\n"
+            "• 💰 **Scholarship information** (SC/ST/OBC/EWS schemes)\n"
+            "• 🏛️ **College details** for all 228 KEA colleges\n"
+            "• 📚 **Career guidance** and branch selection\n"
+            "• 🏦 **Education loan** guidance\n\n"
+            "⚠️ *The local AI engine (Ollama) is currently offline. "
+            "Start it with `ollama serve` for full personalized responses.*"
         )
-        print(f"Response: {response}")
-    else:
-        print("\nNo API key set. Testing fallback...")
-        response = service.generate("Tell me about college options for rank 5000")
-        print(f"Fallback Response: {response[:200]}...")
+
+
+# ==============================================================================
+# INSIGHT RURAL COUNSELOR — main pipeline orchestrator
+# ==============================================================================
+class InsightRuralCounselor:
+    """
+    The heart of InsightRural's AI pipeline:
+
+    Flow for every query:
+    1. Fetch student profile (stored per session)
+    2. RAG → ChromaDB cosine similarity → top-8 domain-specific docs
+    3. Build structured prompt: system + profile JSON + RAG context + history
+    4. LLaMA 3 (via Ollama) reasons over the complete context
+    5. Stream response token-by-token back to frontend
+
+    Fallback chain: Ollama → RAG-only text response
+    """
+
+    def __init__(self):
+        self.ollama = OllamaService()
+        self.rag    = None
+        self.fallback = None
+        self._init_rag()
+
+    def _init_rag(self):
+        """Initialize the ChromaDB RAG engine."""
+        try:
+            from rag_engine import RAGEngine
+            self.rag = RAGEngine()
+            self.fallback = RAGFallback(self.rag)
+            print("[OK] InsightRuralCounselor: ChromaDB RAG engine connected")
+        except Exception as e:
+            print(f"[WARN] RAG engine not available: {e}")
+            self.fallback = RAGFallback(None)
+
+    # ── RAG Context Retrieval ─────────────────────────────────────────────────
+
+    def _get_rag_context(self, query: str) -> str:
+        """
+        Query ChromaDB (all collections — colleges, scholarships, hostels,
+        loans, counseling, cutoffs, fees) using cosine similarity.
+        Returns the top-8 results formatted as a context block.
+        """
+        if not self.rag:
+            return ""
+        try:
+            results = self.rag.search(query, n_results=8)
+            if not results:
+                return ""
+            parts = []
+            for r in results[:8]:
+                content    = r.get("content", "")[:600]
+                collection = r.get("collection", "").upper()
+                if content:
+                    parts.append(f"[{collection}]\n{content}")
+            return "\n\n---\n\n".join(parts)
+        except Exception as e:
+            print(f"[RAG] context fetch failed: {e}")
+            return ""
+
+    # ── Prompt Builder ────────────────────────────────────────────────────────
+
+    def _build_messages(
+        self,
+        query: str,
+        rag_context: str,
+        chat_history: Optional[List[Dict]] = None,
+        session_profile: Optional[Dict] = None,
+    ) -> List[Dict]:
+        """
+        Construct the full message list for LLaMA 3:
+          [system] → [user/assistant history turns] → [user query]
+
+        The system message contains:
+          1. Counselor persona
+          2. Student profile (structured JSON block)
+          3. RAG knowledge base context (grounded domain data)
+        """
+        # ── System message ──
+        system_content = COUNSELOR_SYSTEM_PROMPT
+
+        # 2. Inject student profile as a structured block
+        if session_profile:
+            profile_lines = []
+            mapping = [
+                ("name",             "Name"),
+                ("kcet_rank",        "KCET Rank"),
+                ("marks_10th",       "10th Marks (%)"),
+                ("marks_12th",       "12th / PUC Marks (%)"),
+                ("kcet_marks",       "KCET Marks"),
+                ("branch",           "Preferred Branch"),
+                ("preferred_branches", "Preferred Branches"),
+                ("category",         "Category"),
+                ("income",           "Annual Family Income (₹)"),
+                ("family_income",    "Annual Family Income (₹)"),
+                ("budget",           "Budget for Fees (₹/year)"),
+                ("location",         "Preferred Location"),
+                ("preferred_location", "Preferred Location"),
+                ("hostel_needed",    "Hostel Required"),
+                ("district",         "District / Hometown"),
+            ]
+            for key, label in mapping:
+                val = session_profile.get(key)
+                if val is not None and val != "" and val != []:
+                    if isinstance(val, list):
+                        val = ", ".join(str(v) for v in val)
+                    profile_lines.append(f"  {label}: {val}")
+
+            if profile_lines:
+                system_content += (
+                    "\n\n" + "=" * 60 +
+                    "\nSTUDENT PROFILE (use this to personalize every answer):\n" +
+                    "\n".join(profile_lines) +
+                    "\n" + "=" * 60
+                )
+
+        # 3. Inject RAG knowledge base context
+        if rag_context:
+            system_content += (
+                "\n\n" + "=" * 60 +
+                "\nKNOWLEDGE BASE (retrieved domain data — base your answer on this):\n" +
+                "=" * 60 + "\n" +
+                rag_context +
+                "\n" + "=" * 60 +
+                "\nIMPORTANT: Use the data above to give specific, grounded answers. "
+                "Do NOT invent numbers not present in this context."
+            )
+
+        messages = [{"role": "system", "content": system_content}]
+
+        # Add conversation history (last 8 turns)
+        if chat_history:
+            for turn in chat_history[-8:]:
+                role    = turn.get("role", "user")
+                content = turn.get("content", "")
+                if role in ("user", "assistant") and content:
+                    messages.append({"role": role, "content": content})
+
+        # Final user message
+        messages.append({"role": "user", "content": query})
+        return messages
+
+    # ── Main Entry Points ─────────────────────────────────────────────────────
+
+    def stream_response(
+        self,
+        query: str,
+        chat_history: Optional[List[Dict]] = None,
+        session_id: Optional[str] = None,
+        session_profile: Optional[Dict] = None,
+    ) -> Generator[str, None, None]:
+        """
+        THE MAIN STREAM ENTRY POINT.
+
+        Pipeline:
+          query → RAG fetch → prompt build → Ollama stream → tokens
+          (fallback: RAG-only text if Ollama is offline)
+        """
+        query = (query or "").strip()
+        if not query:
+            yield "Please ask me something — I'm here to help! 🎓"
+            return
+
+        # Step 1: Fetch RAG context (ChromaDB cosine similarity)
+        rag_context = self._get_rag_context(query)
+
+        # Step 2: Build prompt (system + profile + RAG + history + query)
+        messages = self._build_messages(
+            query, rag_context, chat_history, session_profile
+        )
+
+        # Step 3: Stream from Ollama (LLaMA 3 local)
+        yielded = False
+        if self.ollama.available:
+            try:
+                for token in self.ollama.stream(messages):
+                    yield token
+                    yielded = True
+                if yielded:
+                    return
+            except Exception as e:
+                print(f"[Counselor] Ollama stream failed: {e}")
+
+        # Step 4: Fallback — RAG-only response if Ollama is down
+        if not yielded:
+            print("[Counselor] Ollama unavailable — serving RAG fallback")
+            yield self.fallback.generate(query)
+
+    def generate_response(
+        self,
+        query: str,
+        chat_history: Optional[List[Dict]] = None,
+        session_id: Optional[str] = None,
+        session_profile: Optional[Dict] = None,
+    ) -> str:
+        """Non-streaming version — collects the full streamed response."""
+        parts = []
+        for token in self.stream_response(query, chat_history, session_id, session_profile):
+            parts.append(token)
+        return "".join(parts)
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> str:
+        """
+        Simple prompt → response (used by career simulator, counseling service, etc.).
+        Does NOT inject RAG — caller is responsible for providing context in prompt.
+        """
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        result = self.ollama.generate(messages, temperature, max_tokens)
+        if result:
+            return result
+
+        # Fallback
+        return self.fallback.generate(prompt)
+
+    def _check_connection(self) -> bool:
+        """Health check — is Ollama reachable?"""
+        if not self.ollama.available:
+            return False
+        try:
+            r = httpx.get(f"{self.ollama.host}/api/tags", timeout=3.0)
+            return r.status_code == 200
+        except Exception:
+            return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """Health status for /api/ai/status endpoint."""
+        ollama_ok = self._check_connection()
+        return {
+            "ollama": {
+                "available": ollama_ok,
+                "host":      self.ollama.host,
+                "model":     self.ollama.model,
+            },
+            "rag_engine": {
+                "available": self.rag is not None,
+            },
+            "pipeline": "local-ollama-llama3-chromadb-rag",
+        }
+
+
+# ==============================================================================
+# SINGLETON — backward-compatible with app.py
+# ==============================================================================
+_counselor: Optional[InsightRuralCounselor] = None
+
+
+def get_llm_service() -> InsightRuralCounselor:
+    """Get or create the InsightRuralCounselor singleton (Ollama + LLaMA 3)."""
+    global _counselor
+    if _counselor is None:
+        _counselor = InsightRuralCounselor()
+    return _counselor
+
+
+# Backward-compat alias (used in some tests)
+MultiLLMOrchestrator = InsightRuralCounselor

@@ -112,59 +112,70 @@ class RAGEngine:
         return self.collections[name]
     
     def load_and_index_colleges(self) -> int:
-        """Load and index college data for semantic search."""
+        """Load and index all 228 colleges from college_master.json for semantic search."""
         collection = self._get_or_create_collection("colleges")
         if not collection:
             return 0
-            
-        college_file = os.path.join(self.data_dir, 'kea_colleges_complete.json')
+
+        # Try college_master.json first (228 colleges merged), fall back to kea_colleges_complete.json
+        master_file   = os.path.join(self.data_dir, 'college_master.json')
+        fallback_file = os.path.join(self.data_dir, 'kea_colleges_complete.json')
+        college_file  = master_file if os.path.exists(master_file) else fallback_file
+
         if not os.path.exists(college_file):
             print(f"College data file not found: {college_file}")
             return 0
-            
+
         with open(college_file, 'r', encoding='utf-8') as f:
             colleges = json.load(f)
-        
+
         documents = []
-        ids = []
+        ids       = []
         metadatas = []
-        
+
         for college in colleges:
-            # Create searchable document text
-            branches = ', '.join(college.get('branches', []))
+            branches     = ', '.join(college.get('branches', []))
             cutoffs_text = self._format_cutoffs(college.get('cutoff_2024', {}))
-            
-            doc_text = f"""
-            College: {college['name']}
-            Location: {college['location']}, {college.get('district', '')}
-            Type: {college['type']}
-            Affiliation: {college.get('affiliation', 'Unknown')}
-            NAAC Grade: {college.get('naac_grade', 'Not Available')}
-            Branches Available: {branches}
-            Annual Fees - General: ₹{college.get('annual_fee', {}).get('gm', 'N/A')}, OBC: ₹{college.get('annual_fee', {}).get('obc', 'N/A')}, SC/ST: ₹{college.get('annual_fee', {}).get('sc_st', 'N/A')}
-            2024 KCET Cutoffs: {cutoffs_text}
-            Hostel: {'Available' if college.get('hostel_available') else 'Not Available'}
-            Highlights: {', '.join(college.get('highlights', []))}
-            """
-            
+            fees         = college.get('annual_fee', {})
+            fee_label    = college.get('fee_type_label', '')
+
+            # Rich document text — enables semantic search across ALL fields
+            doc_text = f"""College: {college['name']}
+Location: {college.get('location', 'N/A')}, {college.get('district', '')}
+Type: {college.get('type', 'N/A')} | {fee_label}
+Affiliation: {college.get('affiliation', 'VTU')}
+NAAC Grade: {college.get('naac_grade', 'Not Available')}
+Established: {college.get('established', 'N/A')}
+Total Seats: {college.get('total_seats', 'N/A')}
+NBA Accredited: {'Yes' if college.get('nba_accredited') else 'No'}
+Branches Available: {branches}
+Annual Fees — GM: ₹{fees.get('gm', 'N/A')}, OBC: ₹{fees.get('obc', 'N/A')}, SC/ST: ₹{fees.get('sc_st', 'N/A')}
+2024 KCET Cutoffs: {cutoffs_text}
+Average Placement: {college.get('placement_avg_lpa', 'N/A')} LPA | Highest: {college.get('placement_highest_lpa', 'N/A')} LPA
+Top Recruiters: {', '.join(college.get('top_recruiters', []))}
+Hostel: {'Available' if college.get('hostel_available') else 'Not Available'}
+Website: {college.get('website', 'N/A')}
+Phone: {college.get('phone', 'N/A')}
+Email: {college.get('email', 'N/A')}
+Google Maps: {college.get('google_maps_link', 'N/A')}
+Highlights: {', '.join(college.get('highlights', []))}"""
+
             documents.append(doc_text.strip())
             ids.append(college['college_id'])
             metadatas.append({
-                "name": college['name'],
-                "location": college['location'],
-                "type": college['type'],
-                "branches": branches,
-                "has_hostel": college.get('hostel_available', False)
+                "name":       college['name'],
+                "location":   college.get('location', ''),
+                "type":       college.get('type', ''),
+                "branches":   branches[:500],   # ChromaDB metadata has 512 char limit
+                "has_hostel": college.get('hostel_available', False),
+                "website":    college.get('website', ''),
+                "naac":       college.get('naac_grade', ''),
             })
-        
-        # Add to collection
-        collection.add(
-            documents=documents,
-            ids=ids,
-            metadatas=metadatas
-        )
-        
-        print(f"Indexed {len(documents)} colleges")
+
+        # Batch insert (ChromaDB handles deduplication)
+        collection.add(documents=documents, ids=ids, metadatas=metadatas)
+
+        print(f"Indexed {len(documents)} colleges from {os.path.basename(college_file)}")
         return len(documents)
     
     def _format_cutoffs(self, cutoffs: Dict) -> str:

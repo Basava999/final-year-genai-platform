@@ -1,7 +1,7 @@
 // InsightRural Service Worker
 // Enables offline functionality and caching
 
-const CACHE_NAME = 'insightrural-v1.0';
+const CACHE_NAME = 'insightrural-v1.1';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache immediately on install

@@ -935,3 +935,122 @@
     color: #93c5fd;
     border-color: rgba(59, 130, 246, 0.3);
 }
+
+/* ── 5-Year Cutoff Section ────────────────────────────────────────────── */
+.cutoff-section {
+    grid-column: 1 / -1;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.5rem;
+}
+
+.cutoff-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #667eea;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.cutoff-toggle:hover {
+    background: rgba(102, 126, 234, 0.07);
+    border-color: #667eea;
+}
+
+.cutoff-arrow {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.cutoff-table-wrap {
+    display: none;
+    margin-top: 0.6rem;
+    overflow-x: auto;
+}
+
+.cutoff-section.expanded .cutoff-table-wrap {
+    display: block;
+}
+
+.cutoff-section.expanded .cutoff-arrow {
+    transform: rotate(180deg);
+}
+
+.cutoff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cutoff-table thead tr {
+    background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+}
+
+.cutoff-table th {
+    padding: 0.45rem 0.8rem;
+    text-align: center;
+    font-weight: 700;
+    color: #667eea;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #667eea30;
+}
+
+.cutoff-table th:first-child {
+    text-align: left;
+}
+
+.cutoff-table td {
+    padding: 0.4rem 0.8rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: background 0.15s;
+}
+
+.cutoff-table td:first-child {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cutoff-table tbody tr:hover td {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.cutoff-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cutoff-note {
+    font-size: 0.72rem;
+    color: var(--text-tertiary, #aaa);
+    margin-top: 0.4rem;
+    text-align: right;
+    font-style: italic;
+}
+
+/* Dark mode — cutoff section */
+[data-theme="dark"] .cutoff-toggle {
+    border-color: rgba(102, 126, 234, 0.25);
+}
+
+[data-theme="dark"] .cutoff-table thead tr {
+    background: rgba(102, 126, 234, 0.12);
+}
+
+[data-theme="dark"] .cutoff-table th {
+    color: #a5b4fc;
+}

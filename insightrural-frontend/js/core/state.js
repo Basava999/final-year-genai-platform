@@ -1,9 +1,13 @@
 // Application State Management - Enhanced for KEA AI Counselor
 
 // Global API Base URL - shared across all components
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+const API_BASE_URL = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.protocol === 'file:'
+)
     ? 'http://127.0.0.1:5000'
-    : 'https://insightrural-backend.onrender.com'; // TODO: Replace with your actual Render backend URL after deployment
+    : 'https://insightrural-backend.onrender.com';
 
 const AppState = {
     currentFeature: 'colleges',
@@ -60,6 +64,7 @@ const AppState = {
     getSessionId() {
         return this.sessionId;
     },
+
 
     setFeature(feature) {
         this.currentFeature = feature;
